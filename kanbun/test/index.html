@@ -3,69 +3,8 @@
   <head>
     <meta charset="UTF-8">
     <title>漢文CHECK!</title>
-    <style>
-      a {
-        position: absolute;
-        top:0;
-        right:0;
-        z-index: 200;
-        font-size: 1.5em;
-        font-family: sans-serif;
-        font-weight: bold;
-      }
-      #toggle{
-       display: none;
-      }
-      .lq, .la{
-       font-family: sans-serif;
-       font-size: 2em;
-       background-color: #00000066;
-       font-weight: bold;
-       position: fixed;
-       top: 0;
-       left: 2em;
-      }
-      .lq{
-       display: block;
-       z-index: 6;
-      }
-      .la{
-       display: none;
-       z-index: 2;
-      }
-      img{
-       width: 100vw;
-      }
-      .q{
-       display: block;
-       position: absolute;
-       top: 0;
-       left: 0;
-       z-index: 5;
-      }
-      .a{
-       display: none;
-       position: absolute;
-       top: 0;
-       left: 0;
-       z-index: 1;
-      }
-      #toggle:checked ~ .q{
-       display: none;
-      }
-      #toggle:checked ~ .lq{
-       display: none;
-      }
-      #toggle:checked ~ .a{
-       display: block;
-      }
-      #toggle:checked ~ .la{
-       display: block;
-      }
-      .b {
-        writing-mode: vertical-rl;
-      }
-    </style>
+    <script src="script.js"></script>
+    <link rel="stylesheet" href="style.css">
   </head>
   <div class="b">
     <p>
