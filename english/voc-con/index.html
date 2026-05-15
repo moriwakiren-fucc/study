@@ -3,158 +3,26 @@
 <meta charset="UTF-8">
   <title>ボキャコン対策</title>
 <style>
-  
-/* チェックボックスを非表示にする */
-.drawer_hidden {
-  display: none;
-}
-
-/* ハンバーガーアイコンの設置スペース */
-.drawer_open {
-  background-color:#FFFFFF99;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  position: fixed;
-  top: 0;
-  height: 3em;
-  width: 3em;
-  left: 0;
-  z-index: 101;/* 重なり順を一番上にする */
-  cursor: pointer;
-}
-
-/* ハンバーガーメニューのアイコン */
-.drawer_open span,
-.drawer_open span:before,
-.drawer_open span:after {
-  content: '';
-  display: block;
-  height: calc(3em / 8);
-  width: calc(3em * 0.85);
-  border-radius: calc(3em / 6);
-  background: #333;
-  transition: 0.5s;
-  position: absolute;
-  z-index:103;
-}
-
-/* 三本線の一番上の棒の位置調整 */
-.drawer_open span:before {
-  bottom: calc(3em / 4);
-}
-
-/* 三本線の一番下の棒の位置調整 */
-.drawer_open span:after {
-  top: calc(3em / 4);
-}
-
-/* アイコンがクリックされたら真ん中の線を透明にする */
-#drawer_input:checked ~ .drawer_open span {
-  background: rgba(255, 255, 255, 0);
-}
-
-/* アイコンがクリックされたらアイコンが×印になように上下の線を回転 */
-#drawer_input:checked ~ .drawer_open span::before {
-  bottom: 0;
-  transform: rotate(45deg);
-}
-
-#drawer_input:checked ~ .drawer_open span::after {
-  top: 0;
-  transform: rotate(-45deg);
-}
-/* メニューのデザイン*/
-.nav_content {
-  width: 90%;
-  height: 100%;
-  position: fixed;
-  top: 0%;
-  left: -90%; /* メニューを画面の外に飛ばす */
-  z-index: 99;
-  background: #FFFFFF99;
-  transition: .5s;
-  text-align: center;
-  padding-top: 20px;
-  font-size: 1.5em;
-  overflow: scroll;
-  font-family: sans-serif;
-}
-
-.nav_list li{
-  list-style: none; /* 点を消す */
-  padding: 0;       /* 余白も消す（推奨） */
-}
-
-.nav_list li a{
-  text-decoration: none;
-  color: #0000FF;
-}
-  
-/* アイコンがクリックされたらメニューを表示 */
-#drawer_input:checked ~ .nav_content {
-  left: 0;
-}
  
 input[type="checkbox"]{
- display: none;
-}
-.lq, .la{
- font-family: sans-serif;
- font-size: 2em;
- background-color: #00000066;
- font-weight: bold;
- position: fixed;
- top: 0;
- left: 2em;
-}
-.lq{
- display: block;
- z-index: 6;
-}
-.la{
- display: none;
- z-index: 2;
-}
-img{
- width: 100vw;
-}
-.q{
- display: block;
- position: absolute;
- top: 0;
- left: 0;
- z-index: 5;
-}
-.a{
- display: none;
- position: absolute;
- top: 0;
- left: 0;
- z-index: 1;
+  display: none;
 }
 .A {
   color: #FFFFFF;
 }
 input[type="checkbox"]:checked + .A {
- color:#000000;
+  color:#000000;
 }
-
 td {
   border: solid #000000 1px;
 }
-
 table {
   border-collapse: collapse;
 }
-
 .label {
   width: 100%;
 }
-
-tr {
-  background-color: #FFAAAA;
-}
+  
 </style>
 </head>
 <table>
