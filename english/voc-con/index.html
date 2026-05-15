@@ -1,31 +1,36 @@
 <!DOCTYPE html>
 <html lang="ja">
-<meta charset="UTF-8">
-  <title>ボキャコン対策</title>
-<style>
-/*チェックボックスを非表示*/
-input[type="checkbox"]{
-  display: none;
-}
+  <head>
+    <meta charset="UTF-8">
+    <title>ボキャコン対策</title>
+    <style>
+      /*チェックボックスを非表示*/
+      input[type="checkbox"]{
+        display: none;
+      }
 
-.A {
-  color: #FFFFFF;
-}
-input[type="checkbox"]:checked + .A {
-  color:#000000;
-}
-td {
-  border: solid #000000 1px;
-}
-.ans {
-  wdth: 30dvw;
-}
-table {
-  border-collapse: collapse;
-}
-.label {
-  width: 100%;
-}
+      /*答えを白文字にして隠しておく*/
+      .A {
+        color: #FFFFFF;
+      }
+      /*チェックボックスにチェックが入った時、答えを黒文字にして表示する*/
+      input[type="checkbox"]:checked + .A {
+        color:#000000;
+      }
+
+      /*表の書式設定*/
+      table {
+        border-collapse: collapse;
+      }
+      td {
+        border: solid #000000 1px;
+      }
+      .ans {
+        width: 60dvw;  /*答えの列を画面幅の60％に設定*/
+      }
+      .label {
+        width: 100%;  /*ラベルを囲うdivをセル幅いっぱいに設定*/
+      }
   
 </style>
 </head>
