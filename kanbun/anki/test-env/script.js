@@ -6,8 +6,8 @@
  * - sync.js       : チェック状態をクラウドDB（Firestore / Supabase）に同期
  * - sw.js         : Service Worker でオフラインキャッシュ（PWA化）
  * - manifest.json : PWAマニフェスト
- * AppState.checks は将来 localStorage + クラウド二段階保存に移行する前提で
- * 独立モジュール化してあります。
+ * AppState.checks は将来 localStorage + クラウド二段階保存に移行する前提。
+ * AppState.uploadedUnits はブラウザセッション内のみ保持（PWA化後はIndexedDBへ）。
  */
 
 'use strict';
@@ -16,23 +16,29 @@
    アプリケーション状態
 ══════════════════════════════════════ */
 const AppState = {
-  units: [],           // { name: string, file: string }
-  currentUnit: null,   // 選択中の単元名
-  rows: [],            // CSVから読み込んだ行データ [{...}]
-  headers: [],         // 見出し行
-  checks: {},          // { unitName: { rowIndex: bool } } — チェック状態
-  colRevealed: {},     // { colIndex: bool } — 列の一括開閉状態
-  fontScale: 100,      // %
-  filter: 'all',       // 'all' | 'checked' | 'unchecked'
+  units: [],              // { name, file } — サーバー上のCSV
+  uploadedUnits: [],      // { name, file, csvText } — アップロードされたCSV（メモリ保持）
+  currentUnit: null,      // 選択中の単元キー
+  currentFile: null,      // 現在のファイル名
+  headers: [],            // 見出し行
+  rows: [],               // データ行（2次元配列）
+  checks: {},             // { unitKey: { rowIndex: bool } }
+  colRevealed: {},        // { colIndex: bool }
+  fontScale: 100,
+  filter: 'all',
   verticalMode: false,
+  editMode: false,
+  // 編集履歴（Undo/Redo）
+  editHistory: [],        // スナップショット配列（各要素は rows のディープコピー）
+  editHistoryCursor: -1,  // 現在位置
 };
 
 /* ══════════════════════════════════════
-   設定の永続化（localStorage）
+   永続化（localStorage）
    将来: クラウド同期に差し替え
 ══════════════════════════════════════ */
 const Store = {
-  PREF_KEY: 'kanbun_prefs',
+  PREF_KEY:  'kanbun_prefs',
   CHECK_KEY: 'kanbun_checks',
 
   loadPrefs() {
@@ -40,9 +46,9 @@ const Store = {
       const raw = localStorage.getItem(this.PREF_KEY);
       if (!raw) return;
       const p = JSON.parse(raw);
-      if (p.fontScale)     AppState.fontScale    = p.fontScale;
-      if (p.filter)        AppState.filter        = p.filter;
-      if (p.verticalMode !== undefined) AppState.verticalMode = p.verticalMode;
+      if (p.fontScale)                    AppState.fontScale    = p.fontScale;
+      if (p.filter)                       AppState.filter       = p.filter;
+      if (p.verticalMode !== undefined)   AppState.verticalMode = p.verticalMode;
     } catch (e) { console.warn('設定の読み込みに失敗:', e); }
   },
 
@@ -76,104 +82,199 @@ const Store = {
 };
 
 /* ══════════════════════════════════════
-   CSV パーサー（RFC4180準拠・簡易版）
+   CSV パーサー（RFC4180準拠）
 ══════════════════════════════════════ */
 function parseCSV(text) {
-  // BOM除去
-  text = text.replace(/^\uFEFF/, '');
+  text = text.replace(/^\uFEFF/, ''); // BOM除去
   const rows = [];
   let row = [], cell = '', inQuote = false;
 
   for (let i = 0; i < text.length; i++) {
-    const ch = text[i];
+    const ch   = text[i];
     const next = text[i + 1];
-
     if (inQuote) {
       if (ch === '"' && next === '"') { cell += '"'; i++; }
       else if (ch === '"') { inQuote = false; }
       else { cell += ch; }
     } else {
-      if (ch === '"') { inQuote = true; }
-      else if (ch === ',') { row.push(cell.trim()); cell = ''; }
-      else if (ch === '\r' && next === '\n') { row.push(cell.trim()); rows.push(row); row = []; cell = ''; i++; }
-      else if (ch === '\n' || ch === '\r') { row.push(cell.trim()); rows.push(row); row = []; cell = ''; }
-      else { cell += ch; }
+      if      (ch === '"')                    { inQuote = true; }
+      else if (ch === ',')                    { row.push(cell); cell = ''; }
+      else if (ch === '\r' && next === '\n')  { row.push(cell); rows.push(row); row = []; cell = ''; i++; }
+      else if (ch === '\n' || ch === '\r')    { row.push(cell); rows.push(row); row = []; cell = ''; }
+      else                                    { cell += ch; }
     }
   }
-  if (cell !== '' || row.length > 0) { row.push(cell.trim()); rows.push(row); }
+  if (cell !== '' || row.length > 0) { row.push(cell); rows.push(row); }
   return rows.filter(r => r.some(c => c !== ''));
 }
 
 /* ══════════════════════════════════════
-   単元リスト読み込み
-   units.csv を読む（A列: 表示名, B列: ファイル名）
-   例:
-     論語一（学而篇）,rongo1.csv
-     孟子（梁恵王篇）,moshi1.csv
+   CSV シリアライザー（ダウンロード用）
+══════════════════════════════════════ */
+function serializeCSV(unitName, headers, rows) {
+  const escCell = v => {
+    const s = String(v ?? '');
+    return (s.includes(',') || s.includes('"') || s.includes('\n'))
+      ? `"${s.replace(/"/g, '""')}"`
+      : s;
+  };
+  const lines = [];
+  lines.push(escCell(unitName));                    // A1: 単元名
+  lines.push(headers.map(escCell).join(','));        // 見出し行
+  rows.forEach(row => lines.push(row.map(escCell).join(',')));
+  return lines.join('\r\n');
+}
+
+/* ══════════════════════════════════════
+   単元リスト読み込み（units.csv）
 ══════════════════════════════════════ */
 async function loadUnitList() {
   try {
     const res = await fetch('units.csv');
     if (!res.ok) throw new Error('units.csv が見つかりません');
     const text = await res.text();
-    const rows = parseCSV(text);
-    AppState.units = rows
+    const csvRows = parseCSV(text);
+    AppState.units = csvRows
       .filter(r => r[0] && r[1])
-      .map(r => ({ name: r[0], file: r[1] }));
-    renderUnitSelect();
+      .map(r => ({ name: r[0].trim(), file: r[1].trim() }));
+    rebuildUnitSelect();
   } catch (e) {
-    console.error('単元リスト読み込みエラー:', e);
-    showError('units.csv の読み込みに失敗しました。ファイルを確認してください。');
+    console.warn('units.csv の読み込みに失敗（省略可）:', e);
+    // units.csv がなくてもアップロード機能で使えるので警告のみ
+    rebuildUnitSelect();
   }
 }
 
-function renderUnitSelect() {
+/* ── プルダウン再構築（サーバー単元 + アップロード単元） ── */
+function rebuildUnitSelect() {
   const sel = document.getElementById('unitSelect');
+  const prevVal = sel.value;
   sel.innerHTML = '<option value="">── 単元を選択 ──</option>';
-  AppState.units.forEach(u => {
-    const opt = document.createElement('option');
-    opt.value = u.file;
-    opt.textContent = u.name;
-    sel.appendChild(opt);
-  });
+
+  // サーバー上の単元
+  if (AppState.units.length > 0) {
+    const grp = document.createElement('optgroup');
+    grp.label = '── 収録単元 ──';
+    AppState.units.forEach(u => {
+      const opt = document.createElement('option');
+      opt.value = 'server:' + u.file;
+      opt.textContent = u.name;
+      grp.appendChild(opt);
+    });
+    sel.appendChild(grp);
+  }
+
+  // アップロードされた単元
+  if (AppState.uploadedUnits.length > 0) {
+    const grp = document.createElement('optgroup');
+    grp.label = '── アップロード ──';
+    AppState.uploadedUnits.forEach((u, idx) => {
+      const opt = document.createElement('option');
+      opt.value = 'upload:' + idx;
+      opt.textContent = u.name;
+      grp.appendChild(opt);
+    });
+    sel.appendChild(grp);
+  }
+
+  // 選択状態を復元
+  if (prevVal) sel.value = prevVal;
 }
 
 /* ══════════════════════════════════════
-   CSV（単元データ）読み込み
-   行0: A1=単元名（すでにunits.csvで管理しているが念のため取得）
-   行1: 見出し
-   行2~: データ
+   単元データ読み込み
 ══════════════════════════════════════ */
-async function loadUnit(filename) {
+async function loadUnitByValue(value) {
+  if (!value) return;
   showLoading(true);
   try {
-    const res = await fetch(filename);
-    if (!res.ok) throw new Error(`${filename} が見つかりません`);
-    const text = await res.text();
-    const allRows = parseCSV(text);
-
-    if (allRows.length < 2) {
-      showError('データが不足しています（見出し行が必要です）。');
-      return;
+    let csvText;
+    if (value.startsWith('server:')) {
+      const filename = value.slice(7);
+      const res = await fetch(filename);
+      if (!res.ok) throw new Error(`${filename} が見つかりません`);
+      csvText = await res.text();
+      AppState.currentFile = filename;
+    } else if (value.startsWith('upload:')) {
+      const idx = parseInt(value.slice(7), 10);
+      const u = AppState.uploadedUnits[idx];
+      if (!u) throw new Error('アップロードデータが見つかりません');
+      csvText = u.csvText;
+      AppState.currentFile = u.name + '.csv';
+    } else {
+      throw new Error('不明な単元指定: ' + value);
     }
-
-    // A1行（行0）: 単元名
-    AppState.currentUnit = allRows[0][0] || filename;
-    // 行1 (index 1): 見出し
-    AppState.headers = allRows[1];
-    // 行2以降: データ
-    AppState.rows = allRows.slice(2);
-    // 列の開閉状態リセット
-    AppState.colRevealed = {};
-
+    parseCsvIntoState(csvText, value);
     renderTable();
+    document.getElementById('editBtn').hidden = false;
   } catch (e) {
     console.error('単元データ読み込みエラー:', e);
-    showError(`${filename} の読み込みに失敗しました。`);
+    showError(e.message);
   } finally {
     showLoading(false);
   }
 }
+
+function parseCsvIntoState(csvText, unitKey) {
+  const allRows = parseCSV(csvText);
+  if (allRows.length < 2) {
+    showError('データが不足しています（見出し行が必要です）。');
+    return;
+  }
+  AppState.currentUnit = unitKey;
+  // 行0: 単元名（A1）
+  // 行1: 見出し
+  // 行2〜: データ
+  AppState.headers = allRows[1];
+  AppState.rows = allRows.slice(2).map(r => {
+    // 列数をheadersに揃える
+    const padded = [...r];
+    while (padded.length < AppState.headers.length) padded.push('');
+    return padded;
+  });
+  AppState.colRevealed = {};
+  // 編集履歴リセット
+  AppState.editHistory = [];
+  AppState.editHistoryCursor = -1;
+}
+
+/* ══════════════════════════════════════
+   アップロード処理
+══════════════════════════════════════ */
+document.addEventListener('DOMContentLoaded', () => {
+  document.getElementById('uploadInput').addEventListener('change', async (e) => {
+    const files = Array.from(e.target.files);
+    if (files.length === 0) return;
+
+    for (const file of files) {
+      const csvText = await file.text();
+      const allRows = parseCSV(csvText);
+      // A1セルを単元名として使用、なければファイル名
+      const name = (allRows[0] && allRows[0][0] && allRows[0][0].trim())
+        ? allRows[0][0].trim()
+        : file.name.replace(/\.csv$/i, '');
+
+      // 同名が既にあれば上書き
+      const existing = AppState.uploadedUnits.findIndex(u => u.name === name);
+      if (existing >= 0) {
+        AppState.uploadedUnits[existing].csvText = csvText;
+      } else {
+        AppState.uploadedUnits.push({ name, file: file.name, csvText });
+      }
+    }
+
+    rebuildUnitSelect();
+
+    // 最後にアップロードしたものを自動選択
+    const lastIdx = AppState.uploadedUnits.length - 1;
+    const sel = document.getElementById('unitSelect');
+    sel.value = 'upload:' + lastIdx;
+    loadUnitByValue(sel.value);
+
+    // inputをリセット（同じファイルを再度選べるように）
+    e.target.value = '';
+  });
+});
 
 /* ══════════════════════════════════════
    テーブル描画
@@ -191,19 +292,18 @@ function renderTable() {
   thead.innerHTML = '';
   const tr = document.createElement('tr');
 
-  // チェック列ヘッダー
   const thCheck = document.createElement('th');
   thCheck.className = 'col-check';
-  thCheck.innerHTML = '<span style="opacity:0.5;font-size:0.75rem;">✓</span>';
+  thCheck.innerHTML = '<span style="opacity:0.4;font-size:0.75rem;">✓</span>';
   tr.appendChild(thCheck);
 
   AppState.headers.forEach((h, ci) => {
-    const th = document.createElement('th');
+    const th   = document.createElement('th');
     const span = document.createElement('span');
-    span.className = 'th-content';
-    span.dataset.col = ci;
-    span.title = 'クリックで列を一括表示/非表示';
-    span.innerHTML = `${escHtml(h)} <span class="th-toggle-icon">▼</span>`;
+    span.className    = 'th-content';
+    span.dataset.col  = ci;
+    span.title        = 'クリックで列を一括表示/非表示';
+    span.innerHTML    = `${escHtml(h)} <span class="th-toggle-icon">▼</span>`;
     span.addEventListener('click', () => toggleColumn(ci));
     th.appendChild(span);
     tr.appendChild(th);
@@ -219,8 +319,9 @@ function renderTable() {
   applyFilter();
 }
 
+/* ── 1行生成 ── */
 function createRow(rowData, ri) {
-  const unitKey = AppState.currentUnit;
+  const unitKey   = AppState.currentUnit;
   if (!AppState.checks[unitKey]) AppState.checks[unitKey] = {};
   const isChecked = !!AppState.checks[unitKey][ri];
 
@@ -242,91 +343,66 @@ function createRow(rowData, ri) {
 
   // データセル
   AppState.headers.forEach((_, ci) => {
-    const td = document.createElement('td');
-    td.dataset.col = ci;
-    const cellInner = document.createElement('div');
-    cellInner.className = 'cell-inner';
-
-    const cellText = document.createElement('span');
-    cellText.className = 'cell-text';
-    cellText.textContent = rowData[ci] ?? '';
-    cellInner.appendChild(cellText);
-
-    const mask = document.createElement('div');
-    mask.className = 'cell-mask';
-    // 列が開いていれば最初から外す
-    if (AppState.colRevealed[ci]) {
-      mask.classList.add('peeled');
-    }
-    mask.addEventListener('click', () => toggleMask(mask));
-    cellInner.appendChild(mask);
-
-    td.appendChild(cellInner);
-    tr.appendChild(td);
+    tr.appendChild(createDataCell(rowData[ci] ?? '', ri, ci));
   });
 
   return tr;
 }
 
-/* ── セル単体のめくり ── */
-function toggleMask(mask) {
-  if (mask.classList.contains('peeled')) {
-    // 元に戻す
-    mask.classList.remove('peeled');
-    mask.classList.add('restoring');
-    mask.addEventListener('animationend', () => {
-      mask.classList.remove('restoring');
-    }, { once: true });
-  } else {
-    // めくる
-    mask.classList.add('peeling');
-    mask.addEventListener('animationend', () => {
-      mask.classList.remove('peeling');
-      mask.classList.add('peeled');
-    }, { once: true });
-  }
+/* ── データセル生成 ── */
+function createDataCell(value, ri, ci) {
+  const td = document.createElement('td');
+  td.dataset.col = ci;
+
+  const cellInner = document.createElement('div');
+  cellInner.className = 'cell-inner';
+  // めくり状態を data-revealed で管理
+  // 列が既に開かれていれば初めから revealed
+  cellInner.dataset.revealed = AppState.colRevealed[ci] ? 'true' : 'false';
+
+  const cellText = document.createElement('span');
+  cellText.className   = 'cell-text';
+  cellText.textContent = value;
+  cellInner.appendChild(cellText);
+
+  const mask = document.createElement('div');
+  mask.className = 'cell-mask';
+  cellInner.appendChild(mask);
+
+  // ★修正: cell-inner 自体をクリックしてトグル
+  cellInner.addEventListener('click', () => {
+    if (AppState.editMode) return; // 編集モード中は無効
+    toggleCellRevealed(cellInner);
+  });
+
+  td.appendChild(cellInner);
+  return td;
+}
+
+/* ── セル単体のめくりトグル（★バグ修正版） ── */
+function toggleCellRevealed(cellInner) {
+  const current = cellInner.dataset.revealed === 'true';
+  cellInner.dataset.revealed = current ? 'false' : 'true';
 }
 
 /* ── 列一括開閉 ── */
 function toggleColumn(ci) {
+  if (AppState.editMode) return;
   AppState.colRevealed[ci] = !AppState.colRevealed[ci];
   const revealed = AppState.colRevealed[ci];
 
-  document.querySelectorAll(`#tableBody td[data-col="${ci}"] .cell-mask`).forEach(mask => {
-    if (revealed) {
-      if (!mask.classList.contains('peeled')) {
-        mask.classList.add('peeling');
-        mask.addEventListener('animationend', () => {
-          mask.classList.remove('peeling');
-          mask.classList.add('peeled');
-        }, { once: true });
-      }
-    } else {
-      if (mask.classList.contains('peeled')) {
-        mask.classList.remove('peeled');
-        mask.classList.add('restoring');
-        mask.addEventListener('animationend', () => {
-          mask.classList.remove('restoring');
-        }, { once: true });
-      }
-    }
+  document.querySelectorAll(`#tableBody td[data-col="${ci}"] .cell-inner`).forEach(inner => {
+    inner.dataset.revealed = revealed ? 'true' : 'false';
   });
 
-  // アイコン更新
   const icon = document.querySelector(`.th-content[data-col="${ci}"] .th-toggle-icon`);
   if (icon) icon.textContent = revealed ? '▲' : '▼';
 }
 
-/* ── すべて表示/隠す ── */
+/* ── すべて表示 ── */
 function revealAll() {
-  document.querySelectorAll('#tableBody .cell-mask').forEach(mask => {
-    if (!mask.classList.contains('peeled')) {
-      mask.classList.add('peeling');
-      mask.addEventListener('animationend', () => {
-        mask.classList.remove('peeling');
-        mask.classList.add('peeled');
-      }, { once: true });
-    }
+  document.querySelectorAll('#tableBody .cell-inner').forEach(inner => {
+    inner.dataset.revealed = 'true';
   });
   AppState.headers.forEach((_, ci) => {
     AppState.colRevealed[ci] = true;
@@ -335,15 +411,10 @@ function revealAll() {
   });
 }
 
+/* ── すべて隠す ── */
 function hideAll() {
-  document.querySelectorAll('#tableBody .cell-mask').forEach(mask => {
-    if (mask.classList.contains('peeled')) {
-      mask.classList.remove('peeled');
-      mask.classList.add('restoring');
-      mask.addEventListener('animationend', () => {
-        mask.classList.remove('restoring');
-      }, { once: true });
-    }
+  document.querySelectorAll('#tableBody .cell-inner').forEach(inner => {
+    inner.dataset.revealed = 'false';
   });
   AppState.headers.forEach((_, ci) => {
     AppState.colRevealed[ci] = false;
@@ -352,7 +423,9 @@ function hideAll() {
   });
 }
 
-/* ── チェック管理 ── */
+/* ══════════════════════════════════════
+   チェック管理
+══════════════════════════════════════ */
 function toggleCheck(ri, tr, btn) {
   const unitKey = AppState.currentUnit;
   if (!AppState.checks[unitKey]) AppState.checks[unitKey] = {};
@@ -365,23 +438,167 @@ function toggleCheck(ri, tr, btn) {
   tr.classList.toggle('checked-row', !current);
 
   Store.saveChecks();
-  Store.syncToCloud(); // 将来のクラウド同期（現在はno-op）
+  Store.syncToCloud();
 
-  // フィルターが掛かっている場合は再適用
   if (AppState.filter !== 'all') applyFilter();
 }
 
-/* ── フィルター ── */
+/* ══════════════════════════════════════
+   フィルター
+══════════════════════════════════════ */
 function applyFilter() {
   const unitKey = AppState.currentUnit;
   const checks  = AppState.checks[unitKey] || {};
   document.querySelectorAll('#tableBody tr').forEach(tr => {
-    const ri = parseInt(tr.dataset.row, 10);
+    const ri        = parseInt(tr.dataset.row, 10);
     const isChecked = !!checks[ri];
-    if (AppState.filter === 'checked')   tr.classList.toggle('hidden-row', !isChecked);
-    else if (AppState.filter === 'unchecked') tr.classList.toggle('hidden-row', isChecked);
-    else tr.classList.remove('hidden-row');
+    if      (AppState.filter === 'checked')   tr.classList.toggle('hidden-row', !isChecked);
+    else if (AppState.filter === 'unchecked') tr.classList.toggle('hidden-row',  isChecked);
+    else                                       tr.classList.remove('hidden-row');
   });
+}
+
+/* ══════════════════════════════════════
+   編集モード
+══════════════════════════════════════ */
+function enterEditMode() {
+  AppState.editMode = true;
+  document.body.classList.add('edit-mode');
+  document.getElementById('editToolbar').hidden = false;
+  document.getElementById('editBtn').hidden = true;
+
+  // 全セルをtextareaに変換
+  document.querySelectorAll('#tableBody tr').forEach(tr => {
+    const ri = parseInt(tr.dataset.row, 10);
+    tr.querySelectorAll('td[data-col]').forEach(td => {
+      const ci       = parseInt(td.dataset.col, 10);
+      const cellInner = td.querySelector('.cell-inner');
+      const cellText  = td.querySelector('.cell-text');
+      const value     = AppState.rows[ri]?.[ci] ?? '';
+
+      // textareaを生成
+      const textarea = document.createElement('textarea');
+      textarea.className = 'cell-edit-input';
+      textarea.value     = value;
+      textarea.rows      = Math.max(2, (value.match(/\n/g) || []).length + 2);
+      textarea.dataset.ri = ri;
+      textarea.dataset.ci = ci;
+
+      // 変更時: AppState.rows を更新 + 履歴を積む
+      textarea.addEventListener('change', () => {
+        pushEditHistory();
+        AppState.rows[ri][ci] = textarea.value;
+      });
+
+      // cellInnerを非表示にしてtextareaを挿入
+      cellInner.hidden = true;
+      td.appendChild(textarea);
+    });
+  });
+
+  // 最初のスナップショットを記録
+  pushEditHistory();
+  updateUndoRedoBtns();
+}
+
+function exitEditMode() {
+  AppState.editMode = false;
+  document.body.classList.remove('edit-mode');
+  document.getElementById('editToolbar').hidden = true;
+  document.getElementById('editBtn').hidden = false;
+
+  // textareaを削除してcellInnerを復元
+  document.querySelectorAll('#tableBody tr').forEach(tr => {
+    tr.querySelectorAll('td[data-col]').forEach(td => {
+      const textarea  = td.querySelector('.cell-edit-input');
+      const cellInner = td.querySelector('.cell-inner');
+      if (textarea) {
+        // 最終値をAppStateに反映（changeが発火しなかった場合に備えて）
+        const ri = parseInt(textarea.dataset.ri, 10);
+        const ci = parseInt(textarea.dataset.ci, 10);
+        AppState.rows[ri][ci] = textarea.value;
+        // 表示テキストを更新
+        const cellText = cellInner.querySelector('.cell-text');
+        if (cellText) cellText.textContent = textarea.value;
+        textarea.remove();
+      }
+      if (cellInner) cellInner.hidden = false;
+    });
+  });
+}
+
+/* ── 履歴管理（Undo/Redo） ── */
+function snapshotRows() {
+  return AppState.rows.map(r => [...r]);
+}
+
+function pushEditHistory() {
+  // カーソルより未来の履歴を捨てる
+  AppState.editHistory = AppState.editHistory.slice(0, AppState.editHistoryCursor + 1);
+  AppState.editHistory.push(snapshotRows());
+  AppState.editHistoryCursor = AppState.editHistory.length - 1;
+  updateUndoRedoBtns();
+}
+
+function applyHistorySnapshot(snapshot) {
+  AppState.rows = snapshot.map(r => [...r]);
+  // textareaの値を更新
+  document.querySelectorAll('.cell-edit-input').forEach(ta => {
+    const ri = parseInt(ta.dataset.ri, 10);
+    const ci = parseInt(ta.dataset.ci, 10);
+    ta.value = AppState.rows[ri]?.[ci] ?? '';
+  });
+}
+
+function undo() {
+  if (AppState.editHistoryCursor <= 0) return;
+  AppState.editHistoryCursor--;
+  applyHistorySnapshot(AppState.editHistory[AppState.editHistoryCursor]);
+  updateUndoRedoBtns();
+}
+
+function redo() {
+  if (AppState.editHistoryCursor >= AppState.editHistory.length - 1) return;
+  AppState.editHistoryCursor++;
+  applyHistorySnapshot(AppState.editHistory[AppState.editHistoryCursor]);
+  updateUndoRedoBtns();
+}
+
+function updateUndoRedoBtns() {
+  document.getElementById('undoBtn').disabled = AppState.editHistoryCursor <= 0;
+  document.getElementById('redoBtn').disabled = AppState.editHistoryCursor >= AppState.editHistory.length - 1;
+}
+
+/* ── CSV ダウンロード ── */
+function downloadCSV() {
+  // 編集中のtextareaの最新値をAppStateに反映
+  document.querySelectorAll('.cell-edit-input').forEach(ta => {
+    const ri = parseInt(ta.dataset.ri, 10);
+    const ci = parseInt(ta.dataset.ci, 10);
+    if (AppState.rows[ri]) AppState.rows[ri][ci] = ta.value;
+  });
+
+  const unitName = (() => {
+    // 単元名を特定
+    const val = document.getElementById('unitSelect').value;
+    if (val.startsWith('upload:')) {
+      const idx = parseInt(val.slice(7), 10);
+      return AppState.uploadedUnits[idx]?.name ?? '編集済み';
+    }
+    const found = AppState.units.find(u => 'server:' + u.file === val);
+    return found?.name ?? '編集済み';
+  })();
+
+  const csvStr  = serializeCSV(unitName, AppState.headers, AppState.rows);
+  const blob    = new Blob(['\uFEFF' + csvStr], { type: 'text/csv;charset=utf-8;' });
+  const url     = URL.createObjectURL(blob);
+  const a       = document.createElement('a');
+  a.href        = url;
+  a.download    = AppState.currentFile || (unitName + '.csv');
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
 /* ══════════════════════════════════════
@@ -412,10 +629,13 @@ function applyVerticalMode() {
    ユーティリティ
 ══════════════════════════════════════ */
 function escHtml(str) {
-  return (str ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  return (str ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
 }
 function showLoading(show) {
-  // 簡易: ボタンの無効化
   document.getElementById('unitSelect').disabled = show;
 }
 function showError(msg) {
@@ -423,6 +643,7 @@ function showError(msg) {
   empty.hidden = false;
   document.getElementById('tableWrap').hidden = true;
   empty.querySelector('p').textContent = '⚠ ' + msg;
+  document.getElementById('editBtn').hidden = true;
 }
 
 /* ══════════════════════════════════════
@@ -434,54 +655,52 @@ document.addEventListener('DOMContentLoaded', () => {
   applyFontScale();
   applyVerticalMode();
 
-  // フィルターボタンの初期状態
   document.querySelectorAll('.filter-btn').forEach(btn => {
     btn.classList.toggle('active', btn.dataset.filter === AppState.filter);
   });
 
-  // 単元リスト
   loadUnitList();
 
-  // ── イベントリスナー ──
-
-  // 単元選択
+  /* ── 単元選択 ── */
   document.getElementById('unitSelect').addEventListener('change', e => {
-    const file = e.target.value;
-    if (file) loadUnit(file);
-    else {
+    if (AppState.editMode) exitEditMode();
+    const val = e.target.value;
+    if (val) {
+      loadUnitByValue(val);
+    } else {
       document.getElementById('tableWrap').hidden = true;
       document.getElementById('emptyState').hidden = false;
-      document.getElementById('emptyState').querySelector('p').textContent = '単元を選択してください';
+      document.getElementById('emptyState').querySelector('p').textContent =
+        '単元を選択するか、CSVをアップロードしてください';
+      document.getElementById('editBtn').hidden = true;
     }
   });
 
-  // 設定ボタン
+  /* ── 設定パネル ── */
   document.getElementById('settingsBtn').addEventListener('click', openSettings);
   document.getElementById('settingsClose').addEventListener('click', closeSettings);
   document.getElementById('settingsOverlay').addEventListener('click', closeSettings);
 
-  // 縦書き
+  /* ── 縦書き ── */
   document.getElementById('verticalMode').addEventListener('change', e => {
     AppState.verticalMode = e.target.checked;
     applyVerticalMode();
     Store.savePrefs();
   });
 
-  // フォントサイズ
+  /* ── フォントサイズ ── */
   document.getElementById('fontIncrease').addEventListener('click', () => {
-    if (AppState.fontScale >= 200) return;
     AppState.fontScale = Math.min(200, AppState.fontScale + 10);
     applyFontScale();
     Store.savePrefs();
   });
   document.getElementById('fontDecrease').addEventListener('click', () => {
-    if (AppState.fontScale <= 60) return;
     AppState.fontScale = Math.max(60, AppState.fontScale - 10);
     applyFontScale();
     Store.savePrefs();
   });
 
-  // フィルター
+  /* ── フィルター ── */
   document.querySelectorAll('.filter-btn').forEach(btn => {
     btn.addEventListener('click', () => {
       AppState.filter = btn.dataset.filter;
@@ -492,12 +711,25 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   });
 
-  // すべて表示/隠す
+  /* ── すべて表示/隠す ── */
   document.getElementById('revealAllBtn').addEventListener('click', revealAll);
   document.getElementById('hideAllBtn').addEventListener('click', hideAll);
 
-  // Escキーで設定を閉じる
+  /* ── 編集モード ── */
+  document.getElementById('editBtn').addEventListener('click', enterEditMode);
+  document.getElementById('exitEditBtn').addEventListener('click', exitEditMode);
+  document.getElementById('undoBtn').addEventListener('click', undo);
+  document.getElementById('redoBtn').addEventListener('click', redo);
+  document.getElementById('downloadBtn').addEventListener('click', downloadCSV);
+
+  /* ── Escキー ── */
   document.addEventListener('keydown', e => {
     if (e.key === 'Escape') closeSettings();
+    // Ctrl+Z / Ctrl+Shift+Z で Undo/Redo
+    if (AppState.editMode) {
+      if ((e.ctrlKey || e.metaKey) && !e.shiftKey && e.key === 'z') { e.preventDefault(); undo(); }
+      if ((e.ctrlKey || e.metaKey) &&  e.shiftKey && e.key === 'z') { e.preventDefault(); redo(); }
+      if ((e.ctrlKey || e.metaKey) && e.key === 'y') { e.preventDefault(); redo(); }
+    }
   });
 });
