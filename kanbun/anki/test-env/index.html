@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#1a1208">
+  <title>漢文暗記帳</title>
+  <link rel="stylesheet" href="style.css">
+  <!-- PWA対応（将来実装用） -->
+  <!-- <link rel="manifest" href="manifest.json"> -->
+</head>
+<body>
+
+  <header class="site-header">
+    <div class="header-inner">
+      <h1 class="site-title">
+        <span class="title-kanji">漢</span>
+        <span class="title-sub">文暗記帳</span>
+      </h1>
+      <div class="header-controls">
+        <div class="unit-selector-wrap">
+          <label for="unitSelect" class="unit-label">単元</label>
+          <select id="unitSelect" class="unit-select">
+            <option value="">── 単元を選択 ──</option>
+          </select>
+        </div>
+        <button class="settings-btn" id="settingsBtn" aria-label="設定">⚙️ 設定</button>
+      </div>
+    </div>
+  </header>
+
+  <!-- 設定パネル -->
+  <aside class="settings-panel" id="settingsPanel" aria-hidden="true">
+    <div class="settings-inner">
+      <div class="settings-header">
+        <h2>⚙️ 設定</h2>
+        <button class="settings-close" id="settingsClose" aria-label="閉じる">✕</button>
+      </div>
+
+      <div class="settings-group">
+        <label class="toggle-label">
+          <span class="toggle-text">縦書き表示</span>
+          <span class="toggle-switch">
+            <input type="checkbox" id="verticalMode">
+            <span class="toggle-slider"></span>
+          </span>
+        </label>
+      </div>
+
+      <div class="settings-group">
+        <label class="settings-label-text">文字サイズ</label>
+        <div class="font-size-control">
+          <button class="font-btn" id="fontDecrease" aria-label="縮小">A−</button>
+          <span class="font-size-display" id="fontSizeDisplay">100%</span>
+          <button class="font-btn" id="fontIncrease" aria-label="拡大">A＋</button>
+        </div>
+      </div>
+
+      <div class="settings-group">
+        <label class="settings-label-text">表示フィルター</label>
+        <div class="filter-btns">
+          <button class="filter-btn active" data-filter="all">すべて</button>
+          <button class="filter-btn" data-filter="checked">✓ のみ</button>
+          <button class="filter-btn" data-filter="unchecked">✗ のみ</button>
+        </div>
+      </div>
+
+      <div class="settings-group settings-note">
+        <p>※ アカウント・PWA対応は近日実装予定</p>
+      </div>
+    </div>
+  </aside>
+  <div class="settings-overlay" id="settingsOverlay"></div>
+
+  <!-- メインコンテンツ -->
+  <main class="main-content" id="mainContent">
+    <div class="empty-state" id="emptyState">
+      <div class="empty-icon">巻</div>
+      <p>単元を選択してください</p>
+    </div>
+    <div class="table-wrap" id="tableWrap" hidden>
+      <div class="table-toolbar">
+        <button class="reveal-all-btn" id="revealAllBtn">すべて表示</button>
+        <button class="hide-all-btn" id="hideAllBtn">すべて隠す</button>
+      </div>
+      <div class="table-scroll">
+        <table class="study-table" id="studyTable">
+          <thead id="tableHead"></thead>
+          <tbody id="tableBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </main>
+
+  <script src="script.js"></script>
+</body>
+</html>
