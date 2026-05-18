@@ -288,39 +288,55 @@ function renderTable() {
   emptyState.hidden = true;
   tableWrap.hidden  = false;
 
+  const isVert    = AppState.verticalMode;
+  const colCount  = AppState.headers.length;
+  // 縦書き時は列インデックスを逆順にする（右→左）
+  const colOrder  = isVert
+    ? Array.from({ length: colCount }, (_, i) => colCount - 1 - i)
+    : Array.from({ length: colCount }, (_, i) => i);
+
   // ── ヘッダー ──
   thead.innerHTML = '';
   const tr = document.createElement('tr');
 
+  // 縦書き時: チェック列は末尾（=DOM的には右端=表示上は左端）
+  // 横書き時: チェック列は先頭
   const thCheck = document.createElement('th');
   thCheck.className = 'col-check';
   thCheck.innerHTML = '<span style="opacity:0.4;font-size:0.75rem;">✓</span>';
-  tr.appendChild(thCheck);
 
-  AppState.headers.forEach((h, ci) => {
+  if (!isVert) tr.appendChild(thCheck);
+
+  colOrder.forEach(ci => {
+    const h    = AppState.headers[ci];
     const th   = document.createElement('th');
     const span = document.createElement('span');
-    span.className    = 'th-content';
-    span.dataset.col  = ci;
-    span.title        = 'クリックで列を一括表示/非表示';
-    span.innerHTML    = `${escHtml(h)} <span class="th-toggle-icon">▼</span>`;
+    span.className   = 'th-content';
+    span.dataset.col = ci;
+    span.title       = 'クリックで列を一括表示/非表示';
+    span.innerHTML   = `${escHtml(h)} <span class="th-toggle-icon">▼</span>`;
     span.addEventListener('click', () => toggleColumn(ci));
     th.appendChild(span);
     tr.appendChild(th);
   });
+
+  if (isVert) tr.appendChild(thCheck);
   thead.appendChild(tr);
 
   // ── ボディ ──
   tbody.innerHTML = '';
   AppState.rows.forEach((row, ri) => {
-    tbody.appendChild(createRow(row, ri));
+    tbody.appendChild(createRow(row, ri, colOrder, isVert));
   });
 
   applyFilter();
 }
 
 /* ── 1行生成 ── */
-function createRow(rowData, ri) {
+function createRow(rowData, ri, colOrder, isVert) {
+  colOrder = colOrder ?? Array.from({ length: AppState.headers.length }, (_, i) => i);
+  isVert   = isVert   ?? AppState.verticalMode;
+
   const unitKey   = AppState.currentUnit;
   if (!AppState.checks[unitKey]) AppState.checks[unitKey] = {};
   const isChecked = !!AppState.checks[unitKey][ri];
@@ -339,12 +355,16 @@ function createRow(rowData, ri) {
   btn.setAttribute('aria-pressed', isChecked);
   btn.addEventListener('click', () => toggleCheck(ri, tr, btn));
   tdCheck.appendChild(btn);
-  tr.appendChild(tdCheck);
 
-  // データセル
-  AppState.headers.forEach((_, ci) => {
+  // 縦書き: チェック列は末尾（表示上は左端）、横書き: 先頭
+  if (!isVert) tr.appendChild(tdCheck);
+
+  // データセル（colOrderに従って並べる）
+  colOrder.forEach(ci => {
     tr.appendChild(createDataCell(rowData[ci] ?? '', ri, ci));
   });
+
+  if (isVert) tr.appendChild(tdCheck);
 
   return tr;
 }
@@ -462,6 +482,9 @@ function applyFilter() {
    編集モード
 ══════════════════════════════════════ */
 function enterEditMode() {
+  // ★バグ修正: 既に編集モード中なら何もしない
+  if (AppState.editMode) return;
+
   AppState.editMode = true;
   document.body.classList.add('edit-mode');
   document.getElementById('editToolbar').hidden = false;
@@ -471,60 +494,55 @@ function enterEditMode() {
   document.querySelectorAll('#tableBody tr').forEach(tr => {
     const ri = parseInt(tr.dataset.row, 10);
     tr.querySelectorAll('td[data-col]').forEach(td => {
-      const ci       = parseInt(td.dataset.col, 10);
+      const ci        = parseInt(td.dataset.col, 10);
       const cellInner = td.querySelector('.cell-inner');
-      const cellText  = td.querySelector('.cell-text');
-      const value     = AppState.rows[ri]?.[ci] ?? '';
 
-      // textareaを生成
+      // ★バグ修正: 既にtextareaが存在する場合はスキップ
+      if (td.querySelector('.cell-edit-input')) return;
+
+      const value = AppState.rows[ri]?.[ci] ?? '';
+
       const textarea = document.createElement('textarea');
-      textarea.className = 'cell-edit-input';
-      textarea.value     = value;
-      textarea.rows      = Math.max(2, (value.match(/\n/g) || []).length + 2);
+      textarea.className  = 'cell-edit-input';
+      textarea.value      = value;
+      textarea.rows       = Math.max(2, (value.match(/\n/g) || []).length + 2);
       textarea.dataset.ri = ri;
       textarea.dataset.ci = ci;
 
-      // 変更時: AppState.rows を更新 + 履歴を積む
       textarea.addEventListener('change', () => {
         pushEditHistory();
         AppState.rows[ri][ci] = textarea.value;
       });
 
-      // cellInnerを非表示にしてtextareaを挿入
       cellInner.hidden = true;
       td.appendChild(textarea);
     });
   });
 
   // 最初のスナップショットを記録
+  AppState.editHistory = [];
+  AppState.editHistoryCursor = -1;
   pushEditHistory();
   updateUndoRedoBtns();
 }
 
 function exitEditMode() {
+  if (!AppState.editMode) return;
   AppState.editMode = false;
+
+  // textareaの最終値をAppStateに反映
+  document.querySelectorAll('.cell-edit-input').forEach(ta => {
+    const ri = parseInt(ta.dataset.ri, 10);
+    const ci = parseInt(ta.dataset.ci, 10);
+    if (AppState.rows[ri]) AppState.rows[ri][ci] = ta.value;
+  });
+
   document.body.classList.remove('edit-mode');
   document.getElementById('editToolbar').hidden = true;
   document.getElementById('editBtn').hidden = false;
 
-  // textareaを削除してcellInnerを復元
-  document.querySelectorAll('#tableBody tr').forEach(tr => {
-    tr.querySelectorAll('td[data-col]').forEach(td => {
-      const textarea  = td.querySelector('.cell-edit-input');
-      const cellInner = td.querySelector('.cell-inner');
-      if (textarea) {
-        // 最終値をAppStateに反映（changeが発火しなかった場合に備えて）
-        const ri = parseInt(textarea.dataset.ri, 10);
-        const ci = parseInt(textarea.dataset.ci, 10);
-        AppState.rows[ri][ci] = textarea.value;
-        // 表示テキストを更新
-        const cellText = cellInner.querySelector('.cell-text');
-        if (cellText) cellText.textContent = textarea.value;
-        textarea.remove();
-      }
-      if (cellInner) cellInner.hidden = false;
-    });
-  });
+  // テーブルを再描画（縦書き/横書き状態・列順を正しく反映）
+  renderTable();
 }
 
 /* ── 履歴管理（Undo/Redo） ── */
@@ -623,6 +641,10 @@ function applyFontScale() {
 function applyVerticalMode() {
   document.body.classList.toggle('vertical-mode', AppState.verticalMode);
   document.getElementById('verticalMode').checked = AppState.verticalMode;
+  // テーブルが表示中なら列順を再構築（縦書きは右→左の逆順）
+  if (!document.getElementById('tableWrap').hidden) {
+    renderTable();
+  }
 }
 
 /* ══════════════════════════════════════
