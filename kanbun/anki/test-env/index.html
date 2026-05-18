@@ -24,7 +24,20 @@
             <option value="">── 単元を選択 ──</option>
           </select>
         </div>
-        <button class="settings-btn" id="settingsBtn" aria-label="設定">⚙️ 設定</button>
+
+        <!-- アップロードボタン（labelでinputを包む） -->
+        <label class="header-btn upload-btn-label" title="ローカルCSVをアップロード">
+          📂 アップロード
+          <input type="file" id="uploadInput" accept=".csv" multiple hidden>
+        </label>
+
+        <!-- 編集ボタン（単元選択後に表示） -->
+        <button class="header-btn edit-btn" id="editBtn" title="編集モード" hidden>
+          ✏️ 編集
+        </button>
+
+        <!-- 設定ボタン -->
+        <button class="header-btn settings-btn" id="settingsBtn" aria-label="設定">⚙️ 設定</button>
       </div>
     </div>
   </header>
@@ -72,11 +85,24 @@
   </aside>
   <div class="settings-overlay" id="settingsOverlay"></div>
 
+  <!-- 編集モードツールバー（編集中のみ表示） -->
+  <div class="edit-toolbar" id="editToolbar" hidden>
+    <div class="edit-toolbar-inner">
+      <span class="edit-mode-label">✏️ 編集モード</span>
+      <div class="edit-actions">
+        <button class="edit-action-btn" id="undoBtn" disabled>↩ 元に戻す</button>
+        <button class="edit-action-btn" id="redoBtn" disabled>↪ やり直す</button>
+        <button class="edit-action-btn download-csv-btn" id="downloadBtn">⬇ CSV保存</button>
+        <button class="edit-action-btn exit-edit-btn" id="exitEditBtn">✕ 終了</button>
+      </div>
+    </div>
+  </div>
+
   <!-- メインコンテンツ -->
   <main class="main-content" id="mainContent">
     <div class="empty-state" id="emptyState">
       <div class="empty-icon">巻</div>
-      <p>単元を選択してください</p>
+      <p>単元を選択するか、CSVをアップロードしてください</p>
     </div>
     <div class="table-wrap" id="tableWrap" hidden>
       <div class="table-toolbar">
