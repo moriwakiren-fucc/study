@@ -488,21 +488,118 @@ body {
   padding: 1px 2px;
 }
 
-/* 縦書き時はcell-textのみwriting-mode変更 */
+/* ════════════════════════════════
+   縦書きモード
+   - テーブル全体に writing-mode: vertical-rl を適用
+     → 列が自動的に右→左へ並ぶ（日本語縦書きの慣習通り）
+   - セルの min-width ↔ min-height を入れ替え
+   - チェックボタン・ヘッダーテキスト等は horizontal-tb に戻す
+════════════════════════════════ */
+body.vertical-mode .table-scroll {
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+
+body.vertical-mode .study-table {
+  writing-mode: vertical-rl;
+  width: auto;      /* 横書き時の width:100% を解除 */
+  height: 100%;
+}
+
+/* ヘッダー行 */
+body.vertical-mode .study-table thead th {
+  writing-mode: vertical-rl;
+  /* 縦書きなので height が「幅」になる */
+  height: 60px;
+  min-height: 60px;
+  width: auto;
+  white-space: nowrap;
+  padding: 0.8rem 0.5rem;
+  text-align: center;
+  /* sticky を top→left に切り替え */
+  position: sticky;
+  top: unset;
+  left: 0;
+}
+
+/* ヘッダー内のth-content */
+body.vertical-mode .th-content {
+  writing-mode: vertical-rl;
+  flex-direction: column;
+}
+body.vertical-mode .th-toggle-icon {
+  transform: rotate(90deg);
+}
+
+/* データセル */
+body.vertical-mode .study-table td {
+  writing-mode: vertical-rl;
+  /* 縦書き: min-width→min-height、max-width→max-height */
+  min-width:  unset;
+  max-width:  unset;
+  min-height: 80px;
+  max-height: 260px;
+  width:      auto;
+  padding: 0.7rem 0.5rem;
+  vertical-align: top;
+  border-right: none;
+  border-bottom: 1px solid var(--border-light);
+}
+body.vertical-mode .study-table td:last-child {
+  border-bottom: none;
+}
+
+/* チェック列: 横書きに戻す */
+body.vertical-mode .td-check {
+  writing-mode: horizontal-tb;
+  width:      auto;
+  min-height: 40px;
+  max-height: none;
+  padding: 0.4rem;
+  text-align: center;
+  vertical-align: middle;
+}
+body.vertical-mode .check-btn {
+  writing-mode: horizontal-tb;
+}
+
+/* cell-inner */
+body.vertical-mode .cell-inner {
+  width: auto;
+  min-height: 80px;
+}
+
+/* cell-text: 縦書き */
 body.vertical-mode .cell-text {
   writing-mode: vertical-rl;
   min-height: 4em;
-  min-width: 1.4em;
+  min-width: unset;
   word-break: normal;
   white-space: normal;
 }
 
-/* チェックボタンの縦書き対策 */
-body.vertical-mode .td-check {
-  writing-mode: horizontal-tb;
+/* マスクも縦書き時は上下に伸びるよう調整 */
+body.vertical-mode .cell-mask {
+  inset: -3px -2px;
+  /* めくり方向を上→下に */
+  transform-origin: center top;
 }
-body.vertical-mode .check-btn {
-  writing-mode: horizontal-tb;
+body.vertical-mode .cell-inner[data-revealed="true"] .cell-mask {
+  transform: scaleY(0) skewX(-3deg);
+  opacity: 0;
+}
+body.vertical-mode .cell-inner[data-revealed="false"] .cell-mask {
+  transform: scaleY(1) skewX(0deg);
+  opacity: 1;
+}
+
+/* 縦書き+編集モード */
+body.vertical-mode .cell-edit-input {
+  writing-mode: vertical-rl;
+  min-height: 5em;
+  min-width:  unset;
+  width:      auto;
+  resize: horizontal;
 }
 
 /* マスク: pointer-events:none で常にcell-innerがイベントを受け取る */
@@ -570,13 +667,7 @@ body.edit-mode .cell-inner {
   box-shadow: 0 0 0 2px rgba(192,57,43,0.15);
 }
 
-/* 縦書きモード＋編集モード */
-body.vertical-mode .cell-edit-input {
-  writing-mode: vertical-rl;
-  min-height: 5em;
-  min-width: unset;
-  resize: horizontal;
-}
+/* 縦書きモード＋編集モードは上の縦書きセクションで定義済み */
 
 /* ════════════════════════════════
    レスポンシブ
