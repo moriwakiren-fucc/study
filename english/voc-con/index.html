@@ -1,398 +1,411 @@
 <!DOCTYPE html>
 <html lang="ja">
-  <head>
-    <meta charset="UTF-8">
-    <title>ボキャコン対策</title>
-    <style>
-      /*チェックボックスを非表示*/
-      input[type="checkbox"]{
-        display: none;
-      }
+<head>
+<meta charset="UTF-8">
+<title>ボキャコン対策</title>
+<style>
+/*チェックボックスを非表示*/
+input[type="checkbox"]{
+display: none;
+}
+/*答えを白文字にして隠しておく*/
+.A {
+color: #FFFFFF;
+}
+/*チェックボックスにチェックが入った時、答えを黒文字にして表示する*/
+input[type="checkbox"]:checked + .A {
+color:#000000;
+}
+#ohp:checked ~ table {
+font-size: 1em;
+}
+#ohtp:checked ~ table {
+font-size: 1.2em;
+}
+#ohfp:checked ~ table {
+font-size: 1.4em;
+}
 
-      /*答えを白文字にして隠しておく*/
-      .A {
-        color: #FFFFFF;
-      }
-      /*チェックボックスにチェックが入った時、答えを黒文字にして表示する*/
-      input[type="checkbox"]:checked + .A {
-        color:#000000;
-      }
-
-      /*表の書式設定*/
-      table {
-        border-collapse: collapse;
-      }
-      td {
-        border: solid #000000 1px;
-      }
-      .ans {
-        width: 60dvw;  /*答えの列を画面幅の60％に設定*/
-      }
-      .label {
-        width: 100%;  /*ラベルを囲うdivをセル幅いっぱいに設定*/
-      }
-    </style>
-  </head>
-  <table>
-    <tr><td><label for="biology"><div class="label">biology</div></label></td><td class="ans"><input type="checkbox" id="biology"><label for="biology" class="A"><div class="label">生物学</div></label></td></tr>
-    <tr><td><label for="fascinate"><div class="label">fascinate</div></label></td><td class="ans"><input type="checkbox" id="fascinate"><label for="fascinate" class="A"><div class="label">～を魅了する</div></label></td></tr>
-    <tr><td><label for="discourage"><div class="label">discourage</div></label></td><td class="ans"><input type="checkbox" id="discourage"><label for="discourage" class="A"><div class="label">～をがっかりさせる</div></label></td></tr>
-    <tr><td><label for="architecture"><div class="label">architecture</div></label></td><td class="ans"><input type="checkbox" id="architecture"><label for="architecture" class="A"><div class="label">建築</div></label></td></tr>
-    <tr><td><label for="tissue"><div class="label">tissue</div></label></td><td class="ans"><input type="checkbox" id="tissue"><label for="tissue" class="A"><div class="label">組織</div></label></td></tr>
-    <tr><td><label for="mechanism"><div class="label">mechanism</div></label></td><td class="ans"><input type="checkbox" id="mechanism"><label for="mechanism" class="A"><div class="label">構造</div></label></td></tr>
-    <tr><td><label for="transmit"><div class="label">transmit</div></label></td><td class="ans"><input type="checkbox" id="transmit"><label for="transmit" class="A"><div class="label">～を送信する</div></label></td></tr>
-    <tr><td><label for="unlock"><div class="label">unlock</div></label></td><td class="ans"><input type="checkbox" id="unlock"><label for="unlock" class="A"><div class="label">～の錠を開ける</div></label></td></tr>
-    <tr><td><label for="acquisition"><div class="label">acquisition</div></label></td><td class="ans"><input type="checkbox" id="acquisition"><label for="acquisition" class="A"><div class="label">獲得</div></label></td></tr>
-    <tr><td><label for="capable"><div class="label">capable</div></label></td><td class="ans"><input type="checkbox" id="capable"><label for="capable" class="A"><div class="label">能力のある</div></label></td></tr>
-    <tr><td><label for="reproduce"><div class="label">reproduce</div></label></td><td class="ans"><input type="checkbox" id="reproduce"><label for="reproduce" class="A"><div class="label">～を複写する</div></label></td></tr>
-    <tr><td><label for="comprehend"><div class="label">comprehend</div></label></td><td class="ans"><input type="checkbox" id="comprehend"><label for="comprehend" class="A"><div class="label">～を理解する</div></label></td></tr>
-    <tr><td><label for="vessel"><div class="label">vessel</div></label></td><td class="ans"><input type="checkbox" id="vessel"><label for="vessel" class="A"><div class="label">船</div></label></td></tr>
-    <tr><td><label for="breakdown"><div class="label">breakdown</div></label></td><td class="ans"><input type="checkbox" id="breakdown"><label for="breakdown" class="A"><div class="label">崩壊</div></label></td></tr>
-    <tr><td><label for="orbit"><div class="label">orbit</div></label></td><td class="ans"><input type="checkbox" id="orbit"><label for="orbit" class="A"><div class="label">軌道</div></label></td></tr>
-    <tr><td><label for="external"><div class="label">external</div></label></td><td class="ans"><input type="checkbox" id="external"><label for="external" class="A"><div class="label">外部の</div></label></td></tr>
-    <tr><td><label for="astronaut"><div class="label">astronaut</div></label></td><td class="ans"><input type="checkbox" id="astronaut"><label for="astronaut" class="A"><div class="label">宇宙飛行士</div></label></td></tr>
-    <tr><td><label for="fierce"><div class="label">fierce</div></label></td><td class="ans"><input type="checkbox" id="fierce"><label for="fierce" class="A"><div class="label">強烈な</div></label></td></tr>
-    <tr><td><label for="discipline"><div class="label">discipline</div></label></td><td class="ans"><input type="checkbox" id="discipline"><label for="discipline" class="A"><div class="label">鍛錬</div></label></td></tr>
-    <tr><td><label for="vacuum"><div class="label">vacuum</div></label></td><td class="ans"><input type="checkbox" id="vacuum"><label for="vacuum" class="A"><div class="label">真空</div></label></td></tr>
-    <tr><td><label for="fantasy"><div class="label">fantasy</div></label></td><td class="ans"><input type="checkbox" id="fantasy"><label for="fantasy" class="A"><div class="label">空想</div></label></td></tr>
-    <tr><td><label for="tense"><div class="label">tense</div></label></td><td class="ans"><input type="checkbox" id="tense"><label for="tense" class="A"><div class="label">緊張した</div></label></td></tr>
-    <tr><td><label for="gravity"><div class="label">gravity</div></label></td><td class="ans"><input type="checkbox" id="gravity"><label for="gravity" class="A"><div class="label">重力</div></label></td></tr>
-    <tr><td><label for="ensure"><div class="label">ensure</div></label></td><td class="ans"><input type="checkbox" id="ensure"><label for="ensure" class="A"><div class="label">～を保証する</div></label></td></tr>
-    <tr><td><label for="gratitude"><div class="label">gratitude</div></label></td><td class="ans"><input type="checkbox" id="gratitude"><label for="gratitude" class="A"><div class="label">感謝</div></label></td></tr>
-    <tr><td><label for="glory"><div class="label">glory</div></label></td><td class="ans"><input type="checkbox" id="glory"><label for="glory" class="A"><div class="label">栄光</div></label></td></tr>
-    <tr><td><label for="headline"><div class="label">headline</div></label></td><td class="ans"><input type="checkbox" id="headline"><label for="headline" class="A"><div class="label">大見出し</div></label></td></tr>
-    <tr><td><label for="award"><div class="label">award</div></label></td><td class="ans"><input type="checkbox" id="award"><label for="award" class="A"><div class="label">賞</div></label></td></tr>
-    <tr><td><label for="indifferent"><div class="label">indifferent</div></label></td><td class="ans"><input type="checkbox" id="indifferent"><label for="indifferent" class="A"><div class="label">無関心な</div></label></td></tr>
-    <tr><td><label for="prospect"><div class="label">prospect</div></label></td><td class="ans"><input type="checkbox" id="prospect"><label for="prospect" class="A"><div class="label">見込み</div></label></td></tr>
-    <tr><td><label for="uncover"><div class="label">uncover</div></label></td><td class="ans"><input type="checkbox" id="uncover"><label for="uncover" class="A"><div class="label">～を暴露する</div></label></td></tr>
-    <tr><td><label for="compound"><div class="label">compound</div></label></td><td class="ans"><input type="checkbox" id="compound"><label for="compound" class="A"><div class="label">化合物</div></label></td></tr>
-    <tr><td><label for="achievement"><div class="label">achievement</div></label></td><td class="ans"><input type="checkbox" id="achievement"><label for="achievement" class="A"><div class="label">業績</div></label></td></tr>
-    <tr><td><label for="contribution"><div class="label">contribution</div></label></td><td class="ans"><input type="checkbox" id="contribution"><label for="contribution" class="A"><div class="label">寄付</div></label></td></tr>
-    <tr><td><label for="peer"><div class="label">peer</div></label></td><td class="ans"><input type="checkbox" id="peer"><label for="peer" class="A"><div class="label">同等の人</div></label></td></tr>
-    <tr><td><label for="diligent"><div class="label">diligent</div></label></td><td class="ans"><input type="checkbox" id="diligent"><label for="diligent" class="A"><div class="label">勤勉な</div></label></td></tr>
-    <tr><td><label for="astronomy"><div class="label">astronomy</div></label></td><td class="ans"><input type="checkbox" id="astronomy"><label for="astronomy" class="A"><div class="label">天文学</div></label></td></tr>
-    <tr><td><label for="revolve"><div class="label">revolve</div></label></td><td class="ans"><input type="checkbox" id="revolve"><label for="revolve" class="A"><div class="label">回転する</div></label></td></tr>
-    <tr><td><label for="visible"><div class="label">visible</div></label></td><td class="ans"><input type="checkbox" id="visible"><label for="visible" class="A"><div class="label">目に見える</div></label></td></tr>
-    <tr><td><label for="sophisticated"><div class="label">sophisticated</div></label></td><td class="ans"><input type="checkbox" id="sophisticated"><label for="sophisticated" class="A"><div class="label">洗練された</div></label></td></tr>
-    <tr><td><label for="indirect"><div class="label">indirect</div></label></td><td class="ans"><input type="checkbox" id="indirect"><label for="indirect" class="A"><div class="label">間接的な</div></label></td></tr>
-    <tr><td><label for="dim"><div class="label">dim</div></label></td><td class="ans"><input type="checkbox" id="dim"><label for="dim" class="A"><div class="label">薄暗い</div></label></td></tr>
-    <tr><td><label for="consistent"><div class="label">consistent</div></label></td><td class="ans"><input type="checkbox" id="consistent"><label for="consistent" class="A"><div class="label">首尾一貫した</div></label></td></tr>
-    <tr><td><label for="interval"><div class="label">interval</div></label></td><td class="ans"><input type="checkbox" id="interval"><label for="interval" class="A"><div class="label">間隔</div></label></td></tr>
-    <tr><td><label for="evident"><div class="label">evident</div></label></td><td class="ans"><input type="checkbox" id="evident"><label for="evident" class="A"><div class="label">明らかな</div></label></td></tr>
-    <tr><td><label for="limitation"><div class="label">limitation</div></label></td><td class="ans"><input type="checkbox" id="limitation"><label for="limitation" class="A"><div class="label">制限</div></label></td></tr>
-    <tr><td><label for="nonetheless"><div class="label">nonetheless</div></label></td><td class="ans"><input type="checkbox" id="nonetheless"><label for="nonetheless" class="A"><div class="label">それにもかかわらず</div></label></td></tr>
-    <tr><td><label for="numerous"><div class="label">numerous</div></label></td><td class="ans"><input type="checkbox" id="numerous"><label for="numerous" class="A"><div class="label">数多くの</div></label></td></tr>
-    <tr><td><label for="uneasy"><div class="label">uneasy</div></label></td><td class="ans"><input type="checkbox" id="uneasy"><label for="uneasy" class="A"><div class="label">不安な</div></label></td></tr>
-    <tr><td><label for="colony"><div class="label">colony</div></label></td><td class="ans"><input type="checkbox" id="colony"><label for="colony" class="A"><div class="label">植民地</div></label></td></tr>
-    <tr><td><label for="reside"><div class="label">reside</div></label></td><td class="ans"><input type="checkbox" id="reside"><label for="reside" class="A"><div class="label">住む</div></label></td></tr>
-    <tr><td><label for="multitude"><div class="label">multitude</div></label></td><td class="ans"><input type="checkbox" id="multitude"><label for="multitude" class="A"><div class="label">多数</div></label></td></tr>
-    <tr><td><label for="classify"><div class="label">classify</div></label></td><td class="ans"><input type="checkbox" id="classify"><label for="classify" class="A"><div class="label">～を分類する</div></label></td></tr>
-    <tr><td><label for="organism"><div class="label">organism</div></label></td><td class="ans"><input type="checkbox" id="organism"><label for="organism" class="A"><div class="label">生物</div></label></td></tr>
-    <tr><td><label for="infection"><div class="label">infection</div></label></td><td class="ans"><input type="checkbox" id="infection"><label for="infection" class="A"><div class="label">伝染病</div></label></td></tr>
-    <tr><td><label for="internal"><div class="label">internal</div></label></td><td class="ans"><input type="checkbox" id="internal"><label for="internal" class="A"><div class="label">内部の</div></label></td></tr>
-    <tr><td><label for="digest"><div class="label">digest</div></label></td><td class="ans"><input type="checkbox" id="digest"><label for="digest" class="A"><div class="label">～を消化する</div></label></td></tr>
-    <tr><td><label for="strengthen"><div class="label">strengthen</div></label></td><td class="ans"><input type="checkbox" id="strengthen"><label for="strengthen" class="A"><div class="label">～を強くする</div></label></td></tr>
-    <tr><td><label for="reveal"><div class="label">reveal</div></label></td><td class="ans"><input type="checkbox" id="reveal"><label for="reveal" class="A"><div class="label">～を明らかにする</div></label></td></tr>
-    <tr><td><label for="dwell"><div class="label">dwell</div></label></td><td class="ans"><input type="checkbox" id="dwell"><label for="dwell" class="A"><div class="label">住む</div></label></td></tr>
-    <tr><td><label for="prefecture"><div class="label">prefecture</div></label></td><td class="ans"><input type="checkbox" id="prefecture"><label for="prefecture" class="A"><div class="label">県</div></label></td></tr>
-    <tr><td><label for="continental"><div class="label">continental</div></label></td><td class="ans"><input type="checkbox" id="continental"><label for="continental" class="A"><div class="label">大陸の</div></label></td></tr>
-    <tr><td><label for="accessible"><div class="label">accessible</div></label></td><td class="ans"><input type="checkbox" id="accessible"><label for="accessible" class="A"><div class="label">行きやすい</div></label></td></tr>
-    <tr><td><label for="strain"><div class="label">strain</div></label></td><td class="ans"><input type="checkbox" id="strain"><label for="strain" class="A"><div class="label">精神的緊張</div></label></td></tr>
-    <tr><td><label for="barrier"><div class="label">barrier</div></label></td><td class="ans"><input type="checkbox" id="barrier"><label for="barrier" class="A"><div class="label">障壁</div></label></td></tr>
-    <tr><td><label for="circulation"><div class="label">circulation</div></label></td><td class="ans"><input type="checkbox" id="circulation"><label for="circulation" class="A"><div class="label">循環</div></label></td></tr>
-    <tr><td><label for="current"><div class="label">current</div></label></td><td class="ans"><input type="checkbox" id="current"><label for="current" class="A"><div class="label">通貨</div></label></td></tr>
-    <tr><td><label for="compulsory"><div class="label">compulsory</div></label></td><td class="ans"><input type="checkbox" id="compulsory"><label for="compulsory" class="A"><div class="label">義務的な</div></label></td></tr>
-    <tr><td><label for="oblige"><div class="label">oblige</div></label></td><td class="ans"><input type="checkbox" id="oblige"><label for="oblige" class="A"><div class="label">～に義務づける</div></label></td></tr>
-    <tr><td><label for="obtain"><div class="label">obtain</div></label></td><td class="ans"><input type="checkbox" id="obtain"><label for="obtain" class="A"><div class="label">～を獲得する</div></label></td></tr>
-    <tr><td><label for="entitle"><div class="label">entitle</div></label></td><td class="ans"><input type="checkbox" id="entitle"><label for="entitle" class="A"><div class="label">～に資格を与える</div></label></td></tr>
-    <tr><td><label for="unite"><div class="label">unite</div></label></td><td class="ans"><input type="checkbox" id="unite"><label for="unite" class="A"><div class="label">団結する</div></label></td></tr>
-    <tr><td><label for="respectable"><div class="label">respectable</div></label></td><td class="ans"><input type="checkbox" id="respectable"><label for="respectable" class="A"><div class="label">ちゃんとした</div></label></td></tr>
-    <tr><td><label for="universal"><div class="label">universal</div></label></td><td class="ans"><input type="checkbox" id="universal"><label for="universal" class="A"><div class="label">普遍的な</div></label></td></tr>
-    <tr><td><label for="brutal"><div class="label">brutal</div></label></td><td class="ans"><input type="checkbox" id="brutal"><label for="brutal" class="A"><div class="label">残忍な</div></label></td></tr>
-    <tr><td><label for="diplomatic"><div class="label">diplomatic</div></label></td><td class="ans"><input type="checkbox" id="diplomatic"><label for="diplomatic" class="A"><div class="label">外交の</div></label></td></tr>
-    <tr><td><label for="counsel"><div class="label">counsel</div></label></td><td class="ans"><input type="checkbox" id="counsel"><label for="counsel" class="A"><div class="label">助言</div></label></td></tr>
-    <tr><td><label for="govern"><div class="label">govern</div></label></td><td class="ans"><input type="checkbox" id="govern"><label for="govern" class="A"><div class="label">～を統治する</div></label></td></tr>
-    <tr><td><label for="representative"><div class="label">representative</div></label></td><td class="ans"><input type="checkbox" id="representative"><label for="representative" class="A"><div class="label">代表者</div></label></td></tr>
-    <tr><td><label for="cooperate"><div class="label">cooperate</div></label></td><td class="ans"><input type="checkbox" id="cooperate"><label for="cooperate" class="A"><div class="label">協力する</div></label></td></tr>
-    <tr><td><label for="assess"><div class="label">assess</div></label></td><td class="ans"><input type="checkbox" id="assess"><label for="assess" class="A"><div class="label">～を評価する</div></label></td></tr>
-    <tr><td><label for="headquarters"><div class="label">headquarters</div></label></td><td class="ans"><input type="checkbox" id="headquarters"><label for="headquarters" class="A"><div class="label">本部</div></label></td></tr>
-    <tr><td><label for="parliament"><div class="label">parliament</div></label></td><td class="ans"><input type="checkbox" id="parliament"><label for="parliament" class="A"><div class="label">国会</div></label></td></tr>
-    <tr><td><label for="convention"><div class="label">convention</div></label></td><td class="ans"><input type="checkbox" id="convention"><label for="convention" class="A"><div class="label">慣習</div></label></td></tr>
-    <tr><td><label for="competitive"><div class="label">competitive</div></label></td><td class="ans"><input type="checkbox" id="competitive"><label for="competitive" class="A"><div class="label">競争の</div></label></td></tr>
-    <tr><td><label for="educated"><div class="label">educated</div></label></td><td class="ans"><input type="checkbox" id="educated"><label for="educated" class="A"><div class="label">教養のある</div></label></td></tr>
-    <tr><td><label for="burden"><div class="label">burden</div></label></td><td class="ans"><input type="checkbox" id="burden"><label for="burden" class="A"><div class="label">負担</div></label></td></tr>
-    <tr><td><label for="repay"><div class="label">repay</div></label></td><td class="ans"><input type="checkbox" id="repay"><label for="repay" class="A"><div class="label">～を返済する</div></label></td></tr>
-    <tr><td><label for="progressive"><div class="label">progressive</div></label></td><td class="ans"><input type="checkbox" id="progressive"><label for="progressive" class="A"><div class="label">進歩的な</div></label></td></tr>
-    <tr><td><label for="elementary"><div class="label">elementary</div></label></td><td class="ans"><input type="checkbox" id="elementary"><label for="elementary" class="A"><div class="label">小学校の</div></label></td></tr>
-    <tr><td><label for="undergraduate"><div class="label">undergraduate</div></label></td><td class="ans"><input type="checkbox" id="undergraduate"><label for="undergraduate" class="A"><div class="label">学部生</div></label></td></tr>
-    <tr><td><label for="extensive"><div class="label">extensive</div></label></td><td class="ans"><input type="checkbox" id="extensive"><label for="extensive" class="A"><div class="label">広範な</div></label></td></tr>
-    <tr><td><label for="equip"><div class="label">equip</div></label></td><td class="ans"><input type="checkbox" id="equip"><label for="equip" class="A"><div class="label">～に備え付ける</div></label></td></tr>
-    <tr><td><label for="privilege"><div class="label">privilege</div></label></td><td class="ans"><input type="checkbox" id="privilege"><label for="privilege" class="A"><div class="label">特権</div></label></td></tr>
-    <tr><td><label for="excessive"><div class="label">excessive</div></label></td><td class="ans"><input type="checkbox" id="excessive"><label for="excessive" class="A"><div class="label">過剰な</div></label></td></tr>
-    <tr><td><label for="prosperity"><div class="label">prosperity</div></label></td><td class="ans"><input type="checkbox" id="prosperity"><label for="prosperity" class="A"><div class="label">繁栄</div></label></td></tr>
-    <tr><td><label for="apparent"><div class="label">apparent</div></label></td><td class="ans"><input type="checkbox" id="apparent"><label for="apparent" class="A"><div class="label">明白な</div></label></td></tr>
-    <tr><td><label for="rigid"><div class="label">rigid</div></label></td><td class="ans"><input type="checkbox" id="rigid"><label for="rigid" class="A"><div class="label">厳格な</div></label></td></tr>
-    <tr><td><label for="ridiculous"><div class="label">ridiculous</div></label></td><td class="ans"><input type="checkbox" id="ridiculous"><label for="ridiculous" class="A"><div class="label">ばかげた</div></label></td></tr>
-    <tr><td><label for="register"><div class="label">register</div></label></td><td class="ans"><input type="checkbox" id="register"><label for="register" class="A"><div class="label">～を登録する</div></label></td></tr>
-    <tr><td><label for="bureau"><div class="label">bureau</div></label></td><td class="ans"><input type="checkbox" id="bureau"><label for="bureau" class="A"><div class="label">局</div></label></td></tr>
-    <tr><td><label for="assign"><div class="label">assign</div></label></td><td class="ans"><input type="checkbox" id="assign"><label for="assign" class="A"><div class="label">～を任命する</div></label></td></tr>
-    <tr><td><label for="insert"><div class="label">insert</div></label></td><td class="ans"><input type="checkbox" id="insert"><label for="insert" class="A"><div class="label">～を差し込む</div></label></td></tr>
-    <tr><td><label for="absurd"><div class="label">absurd</div></label></td><td class="ans"><input type="checkbox" id="absurd"><label for="absurd" class="A"><div class="label">ばかげた</div></label></td></tr>
-    <tr><td><label for="certificate"><div class="label">certificate</div></label></td><td class="ans"><input type="checkbox" id="certificate"><label for="certificate" class="A"><div class="label">証明書</div></label></td></tr>
-    <tr><td><label for="sue"><div class="label">sue</div></label></td><td class="ans"><input type="checkbox" id="sue"><label for="sue" class="A"><div class="label">～を訴える</div></label></td></tr>
-    <tr><td><label for="insure"><div class="label">insure</div></label></td><td class="ans"><input type="checkbox" id="insure"><label for="insure" class="A"><div class="label">～に保険を掛ける</div></label></td></tr>
-    <tr><td><label for="accidental"><div class="label">accidental</div></label></td><td class="ans"><input type="checkbox" id="accidental"><label for="accidental" class="A"><div class="label">偶然の</div></label></td></tr>
-    <tr><td><label for="distinction"><div class="label">distinction</div></label></td><td class="ans"><input type="checkbox" id="distinction"><label for="distinction" class="A"><div class="label">区別</div></label></td></tr>
-    <tr><td><label for="massive"><div class="label">massive</div></label></td><td class="ans"><input type="checkbox" id="massive"><label for="massive" class="A"><div class="label">大きくて重い</div></label></td></tr>
-    <tr><td><label for="proclaim"><div class="label">proclaim</div></label></td><td class="ans"><input type="checkbox" id="proclaim"><label for="proclaim" class="A"><div class="label">～を宣言する</div></label></td></tr>
-    <tr><td><label for="federal"><div class="label">federal</div></label></td><td class="ans"><input type="checkbox" id="federal"><label for="federal" class="A"><div class="label">連邦の</div></label></td></tr>
-    <tr><td><label for="wildlife"><div class="label">wildlife</div></label></td><td class="ans"><input type="checkbox" id="wildlife"><label for="wildlife" class="A"><div class="label">野生動物</div></label></td></tr>
-    <tr><td><label for="diversity"><div class="label">diversity</div></label></td><td class="ans"><input type="checkbox" id="diversity"><label for="diversity" class="A"><div class="label">多様性</div></label></td></tr>
-    <tr><td><label for="marine"><div class="label">marine</div></label></td><td class="ans"><input type="checkbox" id="marine"><label for="marine" class="A"><div class="label">海洋の</div></label></td></tr>
-    <tr><td><label for="foster"><div class="label">foster</div></label></td><td class="ans"><input type="checkbox" id="foster"><label for="foster" class="A"><div class="label">～を促進する</div></label></td></tr>
-    <tr><td><label for="philosophy"><div class="label">philosophy</div></label></td><td class="ans"><input type="checkbox" id="philosophy"><label for="philosophy" class="A"><div class="label">哲学</div></label></td></tr>
-    <tr><td><label for="investment"><div class="label">investment</div></label></td><td class="ans"><input type="checkbox" id="investment"><label for="investment" class="A"><div class="label">投資</div></label></td></tr>
-    <tr><td><label for="conservation"><div class="label">conservation</div></label></td><td class="ans"><input type="checkbox" id="conservation"><label for="conservation" class="A"><div class="label">保護</div></label></td></tr>
-    <tr><td><label for="precisely"><div class="label">precisely</div></label></td><td class="ans"><input type="checkbox" id="precisely"><label for="precisely" class="A"><div class="label">正確に</div></label></td></tr>
-    <tr><td><label for="ingredient"><div class="label">ingredient</div></label></td><td class="ans"><input type="checkbox" id="ingredient"><label for="ingredient" class="A"><div class="label">材料</div></label></td></tr>
-    <tr><td><label for="purchase"><div class="label">purchase</div></label></td><td class="ans"><input type="checkbox" id="purchase"><label for="purchase" class="A"><div class="label">～を購入する</div></label></td></tr>
-    <tr><td><label for="desirable"><div class="label">desirable</div></label></td><td class="ans"><input type="checkbox" id="desirable"><label for="desirable" class="A"><div class="label">望ましい</div></label></td></tr>
-    <tr><td><label for="bug"><div class="label">bug</div></label></td><td class="ans"><input type="checkbox" id="bug"><label for="bug" class="A"><div class="label">虫</div></label></td></tr>
-    <tr><td><label for="nuisance"><div class="label">nuisance</div></label></td><td class="ans"><input type="checkbox" id="nuisance"><label for="nuisance" class="A"><div class="label">迷惑</div></label></td></tr>
-    <tr><td><label for="substance"><div class="label">substance</div></label></td><td class="ans"><input type="checkbox" id="substance"><label for="substance" class="A"><div class="label">物質</div></label></td></tr>
-    <tr><td><label for="soak"><div class="label">soak</div></label></td><td class="ans"><input type="checkbox" id="soak"><label for="soak" class="A"><div class="label">～を浸す</div></label></td></tr>
-    <tr><td><label for="accumulate"><div class="label">accumulate</div></label></td><td class="ans"><input type="checkbox" id="accumulate"><label for="accumulate" class="A"><div class="label">～を蓄積する</div></label></td></tr>
-    <tr><td><label for="compromise"><div class="label">compromise</div></label></td><td class="ans"><input type="checkbox" id="compromise"><label for="compromise" class="A"><div class="label">妥協する</div></label></td></tr>
-    <tr><td><label for="yield"><div class="label">yield</div></label></td><td class="ans"><input type="checkbox" id="yield"><label for="yield" class="A"><div class="label">～を生じさせる</div></label></td></tr>
-    <tr><td><label for="exposure"><div class="label">exposure</div></label></td><td class="ans"><input type="checkbox" id="exposure"><label for="exposure" class="A"><div class="label">身をさらすこと</div></label></td></tr>
-    <tr><td><label for="substitute"><div class="label">substitute</div></label></td><td class="ans"><input type="checkbox" id="substitute"><label for="substitute" class="A"><div class="label">代用品</div></label></td></tr>
-    <tr><td><label for="craft"><div class="label">craft</div></label></td><td class="ans"><input type="checkbox" id="craft"><label for="craft" class="A"><div class="label">手工業</div></label></td></tr>
-    <tr><td><label for="medieval"><div class="label">medieval</div></label></td><td class="ans"><input type="checkbox" id="medieval"><label for="medieval" class="A"><div class="label">中世の</div></label></td></tr>
-    <tr><td><label for="ethics"><div class="label">ethics</div></label></td><td class="ans"><input type="checkbox" id="ethics"><label for="ethics" class="A"><div class="label">倫理</div></label></td></tr>
-    <tr><td><label for="preservation"><div class="label">preservation</div></label></td><td class="ans"><input type="checkbox" id="preservation"><label for="preservation" class="A"><div class="label">保存</div></label></td></tr>
-    <tr><td><label for="procedure"><div class="label">procedure</div></label></td><td class="ans"><input type="checkbox" id="procedure"><label for="procedure" class="A"><div class="label">手順</div></label></td></tr>
-    <tr><td><label for="mixture"><div class="label">mixture</div></label></td><td class="ans"><input type="checkbox" id="mixture"><label for="mixture" class="A"><div class="label">組み合わせ</div></label></td></tr>
-    <tr><td><label for="dye"><div class="label">dye</div></label></td><td class="ans"><input type="checkbox" id="dye"><label for="dye" class="A"><div class="label">～を染める</div></label></td></tr>
-    <tr><td><label for="dispose"><div class="label">dispose</div></label></td><td class="ans"><input type="checkbox" id="dispose"><label for="dispose" class="A"><div class="label">処理する</div></label></td></tr>
-    <tr><td><label for="landscape"><div class="label">landscape</div></label></td><td class="ans"><input type="checkbox" id="landscape"><label for="landscape" class="A"><div class="label">風景</div></label></td></tr>
-    <tr><td><label for="abuse"><div class="label">abuse</div></label></td><td class="ans"><input type="checkbox" id="abuse"><label for="abuse" class="A"><div class="label">～を虐待する</div></label></td></tr>
-    <tr><td><label for="violate"><div class="label">violate</div></label></td><td class="ans"><input type="checkbox" id="violate"><label for="violate" class="A"><div class="label">～に違反する</div></label></td></tr>
-    <tr><td><label for="substantial"><div class="label">substantial</div></label></td><td class="ans"><input type="checkbox" id="substantial"><label for="substantial" class="A"><div class="label">かなりの</div></label></td></tr>
-    <tr><td><label for="unpleasant"><div class="label">unpleasant</div></label></td><td class="ans"><input type="checkbox" id="unpleasant"><label for="unpleasant" class="A"><div class="label">不愉快な</div></label></td></tr>
-    <tr><td><label for="symptom"><div class="label">symptom</div></label></td><td class="ans"><input type="checkbox" id="symptom"><label for="symptom" class="A"><div class="label">症状</div></label></td></tr>
-    <tr><td><label for="dread"><div class="label">dread</div></label></td><td class="ans"><input type="checkbox" id="dread"><label for="dread" class="A"><div class="label">～を恐れる</div></label></td></tr>
-    <tr><td><label for="remedy"><div class="label">remedy</div></label></td><td class="ans"><input type="checkbox" id="remedy"><label for="remedy" class="A"><div class="label">改善方法</div></label></td></tr>
-    <tr><td><label for="fluid"><div class="label">fluid</div></label></td><td class="ans"><input type="checkbox" id="fluid"><label for="fluid" class="A"><div class="label">流体</div></label></td></tr>
-    <tr><td><label for="supplement"><div class="label">supplement</div></label></td><td class="ans"><input type="checkbox" id="supplement"><label for="supplement" class="A"><div class="label">補足</div></label></td></tr>
-    <tr><td><label for="fatal"><div class="label">fatal</div></label></td><td class="ans"><input type="checkbox" id="fatal"><label for="fatal" class="A"><div class="label">致命的な</div></label></td></tr>
-    <tr><td><label for="diminish"><div class="label">diminish</div></label></td><td class="ans"><input type="checkbox" id="diminish"><label for="diminish" class="A"><div class="label">～を減らす</div></label></td></tr>
-    <tr><td><label for="physician"><div class="label">physician</div></label></td><td class="ans"><input type="checkbox" id="physician"><label for="physician" class="A"><div class="label">医者</div></label></td></tr>
-    <tr><td><label for="virus"><div class="label">virus</div></label></td><td class="ans"><input type="checkbox" id="virus"><label for="virus" class="A"><div class="label">ウイルス</div></label></td></tr>
-    <tr><td><label for="sneeze"><div class="label">sneeze</div></label></td><td class="ans"><input type="checkbox" id="sneeze"><label for="sneeze" class="A"><div class="label">くしゃみをする</div></label></td></tr>
-    <tr><td><label for="furthermore"><div class="label">furthermore</div></label></td><td class="ans"><input type="checkbox" id="furthermore"><label for="furthermore" class="A"><div class="label">さらに</div></label></td></tr>
-    <tr><td><label for="chilly"><div class="label">chilly</div></label></td><td class="ans"><input type="checkbox" id="chilly"><label for="chilly" class="A"><div class="label">ひんやりとした</div></label></td></tr>
-    <tr><td><label for="shiver"><div class="label">shiver</div></label></td><td class="ans"><input type="checkbox" id="shiver"><label for="shiver" class="A"><div class="label">震える</div></label></td></tr>
-    <tr><td><label for="thermometer"><div class="label">thermometer</div></label></td><td class="ans"><input type="checkbox" id="thermometer"><label for="thermometer" class="A"><div class="label">温度計</div></label></td></tr>
-    <tr><td><label for="significance"><div class="label">significance</div></label></td><td class="ans"><input type="checkbox" id="significance"><label for="significance" class="A"><div class="label">重大さ</div></label></td></tr>
-    <tr><td><label for="confuse"><div class="label">confuse</div></label></td><td class="ans"><input type="checkbox" id="confuse"><label for="confuse" class="A"><div class="label">～を困惑させる</div></label></td></tr>
-    <tr><td><label for="phenomenon"><div class="label">phenomenon</div></label></td><td class="ans"><input type="checkbox" id="phenomenon"><label for="phenomenon" class="A"><div class="label">現象</div></label></td></tr>
-    <tr><td><label for="complexity"><div class="label">complexity</div></label></td><td class="ans"><input type="checkbox" id="complexity"><label for="complexity" class="A"><div class="label">複雑さ</div></label></td></tr>
-    <tr><td><label for="predict"><div class="label">predict</div></label></td><td class="ans"><input type="checkbox" id="predict"><label for="predict" class="A"><div class="label">～を予言する</div></label></td></tr>
-    <tr><td><label for="unlike"><div class="label">unlike</div></label></td><td class="ans"><input type="checkbox" id="unlike"><label for="unlike" class="A"><div class="label">似ていない</div></label></td></tr>
-    <tr><td><label for="stability"><div class="label">stability</div></label></td><td class="ans"><input type="checkbox" id="stability"><label for="stability" class="A"><div class="label">安定</div></label></td></tr>
-    <tr><td><label for="detect"><div class="label">detect</div></label></td><td class="ans"><input type="checkbox" id="detect"><label for="detect" class="A"><div class="label">～を発見する</div></label></td></tr>
-    <tr><td><label for="environmental"><div class="label">environmental</div></label></td><td class="ans"><input type="checkbox" id="environmental"><label for="environmental" class="A"><div class="label">環境の</div></label></td></tr>
-    <tr><td><label for="contribute"><div class="label">contribute</div></label></td><td class="ans"><input type="checkbox" id="contribute"><label for="contribute" class="A"><div class="label">～を寄付する</div></label></td></tr>
-    <tr><td><label for="existence"><div class="label">existence</div></label></td><td class="ans"><input type="checkbox" id="existence"><label for="existence" class="A"><div class="label">存在</div></label></td></tr>
-    <tr><td><label for="ambitious"><div class="label">ambitious</div></label></td><td class="ans"><input type="checkbox" id="ambitious"><label for="ambitious" class="A"><div class="label">野心のある</div></label></td></tr>
-    <tr><td><label for="pavement"><div class="label">pavement</div></label></td><td class="ans"><input type="checkbox" id="pavement"><label for="pavement" class="A"><div class="label">舗装</div></label></td></tr>
-    <tr><td><label for="convert"><div class="label">convert</div></label></td><td class="ans"><input type="checkbox" id="convert"><label for="convert" class="A"><div class="label">～を変える</div></label></td></tr>
-    <tr><td><label for="conventional"><div class="label">conventional</div></label></td><td class="ans"><input type="checkbox" id="conventional"><label for="conventional" class="A"><div class="label">型にはまった</div></label></td></tr>
-    <tr><td><label for="erect"><div class="label">erect</div></label></td><td class="ans"><input type="checkbox" id="erect"><label for="erect" class="A"><div class="label">～を建てる</div></label></td></tr>
-    <tr><td><label for="modify"><div class="label">modify</div></label></td><td class="ans"><input type="checkbox" id="modify"><label for="modify" class="A"><div class="label">～を修正する</div></label></td></tr>
-    <tr><td><label for="radical"><div class="label">radical</div></label></td><td class="ans"><input type="checkbox" id="radical"><label for="radical" class="A"><div class="label">徹底的な</div></label></td></tr>
-    <tr><td><label for="suspend"><div class="label">suspend</div></label></td><td class="ans"><input type="checkbox" id="suspend"><label for="suspend" class="A"><div class="label">～を一時停止する</div></label></td></tr>
-    <tr><td><label for="illustrate"><div class="label">illustrate</div></label></td><td class="ans"><input type="checkbox" id="illustrate"><label for="illustrate" class="A"><div class="label">～を説明する</div></label></td></tr>
-    <tr><td><label for="perspective"><div class="label">perspective</div></label></td><td class="ans"><input type="checkbox" id="perspective"><label for="perspective" class="A"><div class="label">観点</div></label></td></tr>
-    <tr><td><label for="appetite"><div class="label">appetite</div></label></td><td class="ans"><input type="checkbox" id="appetite"><label for="appetite" class="A"><div class="label">食欲</div></label></td></tr>
-    <tr><td><label for="startle"><div class="label">startle</div></label></td><td class="ans"><input type="checkbox" id="startle"><label for="startle" class="A"><div class="label">～をびっくりさせる</div></label></td></tr>
-    <tr><td><label for="feast"><div class="label">feast</div></label></td><td class="ans"><input type="checkbox" id="feast"><label for="feast" class="A"><div class="label">祝宴</div></label></td></tr>
-    <tr><td><label for="objective"><div class="label">objective</div></label></td><td class="ans"><input type="checkbox" id="objective"><label for="objective" class="A"><div class="label">目的</div></label></td></tr>
-    <tr><td><label for="starve"><div class="label">starve</div></label></td><td class="ans"><input type="checkbox" id="starve"><label for="starve" class="A"><div class="label">餓死する</div></label></td></tr>
-    <tr><td><label for="ratio"><div class="label">ratio</div></label></td><td class="ans"><input type="checkbox" id="ratio"><label for="ratio" class="A"><div class="label">比率</div></label></td></tr>
-    <tr><td><label for="globe"><div class="label">globe</div></label></td><td class="ans"><input type="checkbox" id="globe"><label for="globe" class="A"><div class="label">世界</div></label></td></tr>
-    <tr><td><label for="minority"><div class="label">minority</div></label></td><td class="ans"><input type="checkbox" id="minority"><label for="minority" class="A"><div class="label">少数</div></label></td></tr>
-    <tr><td><label for="ample"><div class="label">ample</div></label></td><td class="ans"><input type="checkbox" id="ample"><label for="ample" class="A"><div class="label">十分な</div></label></td></tr>
-    <tr><td><label for="humble"><div class="label">humble</div></label></td><td class="ans"><input type="checkbox" id="humble"><label for="humble" class="A"><div class="label">謙虚な</div></label></td></tr>
-    <tr><td><label for="confront"><div class="label">confront</div></label></td><td class="ans"><input type="checkbox" id="confront"><label for="confront" class="A"><div class="label">～に立ち向かう</div></label></td></tr>
-    <tr><td><label for="immense"><div class="label">immense</div></label></td><td class="ans"><input type="checkbox" id="immense"><label for="immense" class="A"><div class="label">巨大な</div></label></td></tr>
-    <tr><td><label for="consume"><div class="label">consume</div></label></td><td class="ans"><input type="checkbox" id="consume"><label for="consume" class="A"><div class="label">～を消費する</div></label></td></tr>
-    <tr><td><label for="affection"><div class="label">affection</div></label></td><td class="ans"><input type="checkbox" id="affection"><label for="affection" class="A"><div class="label">愛情</div></label></td></tr>
-    <tr><td><label for="commodity"><div class="label">commodity</div></label></td><td class="ans"><input type="checkbox" id="commodity"><label for="commodity" class="A"><div class="label">商品</div></label></td></tr>
-    <tr><td><label for="profitable"><div class="label">profitable</div></label></td><td class="ans"><input type="checkbox" id="profitable"><label for="profitable" class="A"><div class="label">利益になる</div></label></td></tr>
-    <tr><td><label for="cultivate"><div class="label">cultivate</div></label></td><td class="ans"><input type="checkbox" id="cultivate"><label for="cultivate" class="A"><div class="label">～を耕す</div></label></td></tr>
-    <tr><td><label for="unfair"><div class="label">unfair</div></label></td><td class="ans"><input type="checkbox" id="unfair"><label for="unfair" class="A"><div class="label">不公平な</div></label></td></tr>
-    <tr><td><label for="endure"><div class="label">endure</div></label></td><td class="ans"><input type="checkbox" id="endure"><label for="endure" class="A"><div class="label">～に耐える</div></label></td></tr>
-    <tr><td><label for="hardship"><div class="label">hardship</div></label></td><td class="ans"><input type="checkbox" id="hardship"><label for="hardship" class="A"><div class="label">苦難</div></label></td></tr>
-    <tr><td><label for="fraction"><div class="label">fraction</div></label></td><td class="ans"><input type="checkbox" id="fraction"><label for="fraction" class="A"><div class="label">一部</div></label></td></tr>
-    <tr><td><label for="minimum"><div class="label">minimum</div></label></td><td class="ans"><input type="checkbox" id="minimum"><label for="minimum" class="A"><div class="label">最低の</div></label></td></tr>
-    <tr><td><label for="overtime"><div class="label">overtime</div></label></td><td class="ans"><input type="checkbox" id="overtime"><label for="overtime" class="A"><div class="label">時間外に</div></label></td></tr>
-    <tr><td><label for="justify"><div class="label">justify</div></label></td><td class="ans"><input type="checkbox" id="justify"><label for="justify" class="A"><div class="label">～を正当化する</div></label></td></tr>
-    <tr><td><label for="grocery"><div class="label">grocery</div></label></td><td class="ans"><input type="checkbox" id="grocery"><label for="grocery" class="A"><div class="label">食料雑貨店</div></label></td></tr>
-    <tr><td><label for="agriculture"><div class="label">agriculture</div></label></td><td class="ans"><input type="checkbox" id="agriculture"><label for="agriculture" class="A"><div class="label">農業</div></label></td></tr>
-    <tr><td><label for="concept"><div class="label">concept</div></label></td><td class="ans"><input type="checkbox" id="concept"><label for="concept" class="A"><div class="label">概念</div></label></td></tr>
-    <tr><td><label for="passionate"><div class="label">passionate</div></label></td><td class="ans"><input type="checkbox" id="passionate"><label for="passionate" class="A"><div class="label">情熱的な</div></label></td></tr>
-    <tr><td><label for="generate"><div class="label">generate</div></label></td><td class="ans"><input type="checkbox" id="generate"><label for="generate" class="A"><div class="label">～を生み出す</div></label></td></tr>
-    <tr><td><label for="qualify"><div class="label">qualify</div></label></td><td class="ans"><input type="checkbox" id="qualify"><label for="qualify" class="A"><div class="label">～に資格を与える</div></label></td></tr>
-    <tr><td><label for="manufacturer"><div class="label">manufacturer</div></label></td><td class="ans"><input type="checkbox" id="manufacturer"><label for="manufacturer" class="A"><div class="label">製造業者</div></label></td></tr>
-    <tr><td><label for="assurance"><div class="label">assurance</div></label></td><td class="ans"><input type="checkbox" id="assurance"><label for="assurance" class="A"><div class="label">自信</div></label></td></tr>
-    <tr><td><label for="transparent"><div class="label">transparent</div></label></td><td class="ans"><input type="checkbox" id="transparent"><label for="transparent" class="A"><div class="label">透明な</div></label></td></tr>
-    <tr><td><label for="corrupt"><div class="label">corrupt</div></label></td><td class="ans"><input type="checkbox" id="corrupt"><label for="corrupt" class="A"><div class="label">汚職の</div></label></td></tr>
-    <tr><td><label for="inspect"><div class="label">inspect</div></label></td><td class="ans"><input type="checkbox" id="inspect"><label for="inspect" class="A"><div class="label">～を詳しく調べる</div></label></td></tr>
-    <tr><td><label for="controversy"><div class="label">controversy</div></label></td><td class="ans"><input type="checkbox" id="controversy"><label for="controversy" class="A"><div class="label">論争</div></label></td></tr>
-    <tr><td><label for="flee"><div class="label">flee</div></label></td><td class="ans"><input type="checkbox" id="flee"><label for="flee" class="A"><div class="label">～から逃げる</div></label></td></tr>
-    <tr><td><label for="identification"><div class="label">identification</div></label></td><td class="ans"><input type="checkbox" id="identification"><label for="identification" class="A"><div class="label">身分証明書</div></label></td></tr>
-    <tr><td><label for="accommodation"><div class="label">accommodation</div></label></td><td class="ans"><input type="checkbox" id="accommodation"><label for="accommodation" class="A"><div class="label">宿泊設備</div></label></td></tr>
-    <tr><td><label for="initial"><div class="label">initial</div></label></td><td class="ans"><input type="checkbox" id="initial"><label for="initial" class="A"><div class="label">初めの</div></label></td></tr>
-    <tr><td><label for="transition"><div class="label">transition</div></label></td><td class="ans"><input type="checkbox" id="transition"><label for="transition" class="A"><div class="label">移り変わり</div></label></td></tr>
-    <tr><td><label for="priority"><div class="label">priority</div></label></td><td class="ans"><input type="checkbox" id="priority"><label for="priority" class="A"><div class="label">優先事項</div></label></td></tr>
-    <tr><td><label for="hatred"><div class="label">hatred</div></label></td><td class="ans"><input type="checkbox" id="hatred"><label for="hatred" class="A"><div class="label">憎しみ</div></label></td></tr>
-    <tr><td><label for="deprive"><div class="label">deprive</div></label></td><td class="ans"><input type="checkbox" id="deprive"><label for="deprive" class="A"><div class="label">～から奪う</div></label></td></tr>
-    <tr><td><label for="instrumental"><div class="label">instrumental</div></label></td><td class="ans"><input type="checkbox" id="instrumental"><label for="instrumental" class="A"><div class="label">役立つ</div></label></td></tr>
-    <tr><td><label for="construct"><div class="label">construct</div></label></td><td class="ans"><input type="checkbox" id="construct"><label for="construct" class="A"><div class="label">～を建設する</div></label></td></tr>
-    <tr><td><label for="coordinate"><div class="label">coordinate</div></label></td><td class="ans"><input type="checkbox" id="coordinate"><label for="coordinate" class="A"><div class="label">～を調整する</div></label></td></tr>
-    <tr><td><label for="distress"><div class="label">distress</div></label></td><td class="ans"><input type="checkbox" id="distress"><label for="distress" class="A"><div class="label">苦悩</div></label></td></tr>
-    <tr><td><label for="emergency"><div class="label">emergency</div></label></td><td class="ans"><input type="checkbox" id="emergency"><label for="emergency" class="A"><div class="label">緊急</div></label></td></tr>
-    <tr><td><label for="structural"><div class="label">structural</div></label></td><td class="ans"><input type="checkbox" id="structural"><label for="structural" class="A"><div class="label">構造の</div></label></td></tr>
-    <tr><td><label for="collapse"><div class="label">collapse</div></label></td><td class="ans"><input type="checkbox" id="collapse"><label for="collapse" class="A"><div class="label">崩壊する</div></label></td></tr>
-    <tr><td><label for="summon"><div class="label">summon</div></label></td><td class="ans"><input type="checkbox" id="summon"><label for="summon" class="A"><div class="label">～を呼び出す</div></label></td></tr>
-    <tr><td><label for="urban"><div class="label">urban</div></label></td><td class="ans"><input type="checkbox" id="urban"><label for="urban" class="A"><div class="label">都市の</div></label></td></tr>
-    <tr><td><label for="tackle"><div class="label">tackle</div></label></td><td class="ans"><input type="checkbox" id="tackle"><label for="tackle" class="A"><div class="label">～に取り組む</div></label></td></tr>
-    <tr><td><label for="experienced"><div class="label">experienced</div></label></td><td class="ans"><input type="checkbox" id="experienced"><label for="experienced" class="A"><div class="label">経験豊かな</div></label></td></tr>
-    <tr><td><label for="extend"><div class="label">extend</div></label></td><td class="ans"><input type="checkbox" id="extend"><label for="extend" class="A"><div class="label">～を引き伸ばす</div></label></td></tr>
-    <tr><td><label for="counterpart"><div class="label">counterpart</div></label></td><td class="ans"><input type="checkbox" id="counterpart"><label for="counterpart" class="A"><div class="label">対応するもの</div></label></td></tr>
-    <tr><td><label for="compensation"><div class="label">compensation</div></label></td><td class="ans"><input type="checkbox" id="compensation"><label for="compensation" class="A"><div class="label">賠償</div></label></td></tr>
-    <tr><td><label for="priceless"><div class="label">priceless</div></label></td><td class="ans"><input type="checkbox" id="priceless"><label for="priceless" class="A"><div class="label">とても高価な</div></label></td></tr>
-    <tr><td><label for="survival"><div class="label">survival</div></label></td><td class="ans"><input type="checkbox" id="survival"><label for="survival" class="A"><div class="label">生存</div></label></td></tr>
-    <tr><td><label for="decade"><div class="label">decade</div></label></td><td class="ans"><input type="checkbox" id="decade"><label for="decade" class="A"><div class="label">10年間</div></label></td></tr>
-    <tr><td><label for="gloomy"><div class="label">gloomy</div></label></td><td class="ans"><input type="checkbox" id="gloomy"><label for="gloomy" class="A"><div class="label">悲観的な</div></label></td></tr>
-    <tr><td><label for="forecast"><div class="label">forecast</div></label></td><td class="ans"><input type="checkbox" id="forecast"><label for="forecast" class="A"><div class="label">予報</div></label></td></tr>
-    <tr><td><label for="approximately"><div class="label">approximately</div></label></td><td class="ans"><input type="checkbox" id="approximately"><label for="approximately" class="A"><div class="label">おおよそ</div></label></td></tr>
-    <tr><td><label for="anticipate"><div class="label">anticipate</div></label></td><td class="ans"><input type="checkbox" id="anticipate"><label for="anticipate" class="A"><div class="label">～を予想する</div></label></td></tr>
-    <tr><td><label for="pension"><div class="label">pension</div></label></td><td class="ans"><input type="checkbox" id="pension"><label for="pension" class="A"><div class="label">年金</div></label></td></tr>
-    <tr><td><label for="cope"><div class="label">cope</div></label></td><td class="ans"><input type="checkbox" id="cope"><label for="cope" class="A"><div class="label">うまく処理する</div></label></td></tr>
-    <tr><td><label for="costly"><div class="label">costly</div></label></td><td class="ans"><input type="checkbox" id="costly"><label for="costly" class="A"><div class="label">高価な</div></label></td></tr>
-    <tr><td><label for="significant"><div class="label">significant</div></label></td><td class="ans"><input type="checkbox" id="significant"><label for="significant" class="A"><div class="label">重大な</div></label></td></tr>
-    <tr><td><label for="viewpoint"><div class="label">viewpoint</div></label></td><td class="ans"><input type="checkbox" id="viewpoint"><label for="viewpoint" class="A"><div class="label">見地</div></label></td></tr>
-    <tr><td><label for="emerge"><div class="label">emerge</div></label></td><td class="ans"><input type="checkbox" id="emerge"><label for="emerge" class="A"><div class="label">現れる</div></label></td></tr>
-    <tr><td><label for="unemployment"><div class="label">unemployment</div></label></td><td class="ans"><input type="checkbox" id="unemployment"><label for="unemployment" class="A"><div class="label">失業者数</div></label></td></tr>
-    <tr><td><label for="highlight"><div class="label">highlight</div></label></td><td class="ans"><input type="checkbox" id="highlight"><label for="highlight" class="A"><div class="label">～を強調する</div></label></td></tr>
-    <tr><td><label for="fundamental"><div class="label">fundamental</div></label></td><td class="ans"><input type="checkbox" id="fundamental"><label for="fundamental" class="A"><div class="label">基本的な</div></label></td></tr>
-    <tr><td><label for="scare"><div class="label">scare</div></label></td><td class="ans"><input type="checkbox" id="scare"><label for="scare" class="A"><div class="label">～を怖がらせる</div></label></td></tr>
-    <tr><td><label for="campaign"><div class="label">campaign</div></label></td><td class="ans"><input type="checkbox" id="campaign"><label for="campaign" class="A"><div class="label">運動</div></label></td></tr>
-    <tr><td><label for="fossil"><div class="label">fossil</div></label></td><td class="ans"><input type="checkbox" id="fossil"><label for="fossil" class="A"><div class="label">化石</div></label></td></tr>
-    <tr><td><label for="unlimited"><div class="label">unlimited</div></label></td><td class="ans"><input type="checkbox" id="unlimited"><label for="unlimited" class="A"><div class="label">無制限の</div></label></td></tr>
-    <tr><td><label for="vanish"><div class="label">vanish</div></label></td><td class="ans"><input type="checkbox" id="vanish"><label for="vanish" class="A"><div class="label">消える</div></label></td></tr>
-    <tr><td><label for="alternative"><div class="label">alternative</div></label></td><td class="ans"><input type="checkbox" id="alternative"><label for="alternative" class="A"><div class="label">代わりの</div></label></td></tr>
-    <tr><td><label for="experimental"><div class="label">experimental</div></label></td><td class="ans"><input type="checkbox" id="experimental"><label for="experimental" class="A"><div class="label">実験の</div></label></td></tr>
-    <tr><td><label for="abolish"><div class="label">abolish</div></label></td><td class="ans"><input type="checkbox" id="abolish"><label for="abolish" class="A"><div class="label">～を廃止する</div></label></td></tr>
-    <tr><td><label for="innovation"><div class="label">innovation</div></label></td><td class="ans"><input type="checkbox" id="innovation"><label for="innovation" class="A"><div class="label">革新</div></label></td></tr>
-    <tr><td><label for="revenue"><div class="label">revenue</div></label></td><td class="ans"><input type="checkbox" id="revenue"><label for="revenue" class="A"><div class="label">総利益</div></label></td></tr>
-    <tr><td><label for="skilled"><div class="label">skilled</div></label></td><td class="ans"><input type="checkbox" id="skilled"><label for="skilled" class="A"><div class="label">熟練した</div></label></td></tr>
-    <tr><td><label for="immigrant"><div class="label">immigrant</div></label></td><td class="ans"><input type="checkbox" id="immigrant"><label for="immigrant" class="A"><div class="label">移民</div></label></td></tr>
-    <tr><td><label for="desperate"><div class="label">desperate</div></label></td><td class="ans"><input type="checkbox" id="desperate"><label for="desperate" class="A"><div class="label">向こう見ずな</div></label></td></tr>
-    <tr><td><label for="boost"><div class="label">boost</div></label></td><td class="ans"><input type="checkbox" id="boost"><label for="boost" class="A"><div class="label">～を増強する</div></label></td></tr>
-    <tr><td><label for="conservative"><div class="label">conservative</div></label></td><td class="ans"><input type="checkbox" id="conservative"><label for="conservative" class="A"><div class="label">保守的な</div></label></td></tr>
-    <tr><td><label for="nationality"><div class="label">nationality</div></label></td><td class="ans"><input type="checkbox" id="nationality"><label for="nationality" class="A"><div class="label">国籍</div></label></td></tr>
-    <tr><td><label for="productive"><div class="label">productive</div></label></td><td class="ans"><input type="checkbox" id="productive"><label for="productive" class="A"><div class="label">生産的な</div></label></td></tr>
-    <tr><td><label for="fluent"><div class="label">fluent</div></label></td><td class="ans"><input type="checkbox" id="fluent"><label for="fluent" class="A"><div class="label">堪能な</div></label></td></tr>
-    <tr><td><label for="partnership"><div class="label">partnership</div></label></td><td class="ans"><input type="checkbox" id="partnership"><label for="partnership" class="A"><div class="label">提携</div></label></td></tr>
-    <tr><td><label for="discrimination"><div class="label">discrimination</div></label></td><td class="ans"><input type="checkbox" id="discrimination"><label for="discrimination" class="A"><div class="label">差別</div></label></td></tr>
-    <tr><td><label for="dignity"><div class="label">dignity</div></label></td><td class="ans"><input type="checkbox" id="dignity"><label for="dignity" class="A"><div class="label">威厳</div></label></td></tr>
-    <tr><td><label for="treatment"><div class="label">treatment</div></label></td><td class="ans"><input type="checkbox" id="treatment"><label for="treatment" class="A"><div class="label">治療</div></label></td></tr>
-    <tr><td><label for="overwhelming"><div class="label">overwhelming</div></label></td><td class="ans"><input type="checkbox" id="overwhelming"><label for="overwhelming" class="A"><div class="label">圧倒的な</div></label></td></tr>
-    <tr><td><label for="infant"><div class="label">infant</div></label></td><td class="ans"><input type="checkbox" id="infant"><label for="infant" class="A"><div class="label">幼児</div></label></td></tr>
-    <tr><td><label for="paradox"><div class="label">paradox</div></label></td><td class="ans"><input type="checkbox" id="paradox"><label for="paradox" class="A"><div class="label">逆説</div></label></td></tr>
-    <tr><td><label for="era"><div class="label">era</div></label></td><td class="ans"><input type="checkbox" id="era"><label for="era" class="A"><div class="label">時代</div></label></td></tr>
-    <tr><td><label for="urge"><div class="label">urge</div></label></td><td class="ans"><input type="checkbox" id="urge"><label for="urge" class="A"><div class="label">～に強く迫る</div></label></td></tr>
-    <tr><td><label for="aged"><div class="label">aged</div></label></td><td class="ans"><input type="checkbox" id="aged"><label for="aged" class="A"><div class="label">歳の</div></label></td></tr>
-    <tr><td><label for="retirement"><div class="label">retirement</div></label></td><td class="ans"><input type="checkbox" id="retirement"><label for="retirement" class="A"><div class="label">退職</div></label></td></tr>
-    <tr><td><label for="logical"><div class="label">logical</div></label></td><td class="ans"><input type="checkbox" id="logical"><label for="logical" class="A"><div class="label">論理的な</div></label></td></tr>
-    <tr><td><label for="corporation"><div class="label">corporation</div></label></td><td class="ans"><input type="checkbox" id="corporation"><label for="corporation" class="A"><div class="label">企業</div></label></td></tr>
-    <tr><td><label for="regulate"><div class="label">regulate</div></label></td><td class="ans"><input type="checkbox" id="regulate"><label for="regulate" class="A"><div class="label">～を規制する</div></label></td></tr>
-    <tr><td><label for="reluctant"><div class="label">reluctant</div></label></td><td class="ans"><input type="checkbox" id="reluctant"><label for="reluctant" class="A"><div class="label">気が進まない</div></label></td></tr>
-    <tr><td><label for="adequate"><div class="label">adequate</div></label></td><td class="ans"><input type="checkbox" id="adequate"><label for="adequate" class="A"><div class="label">十分な</div></label></td></tr>
-    <tr><td><label for="ethnic"><div class="label">ethnic</div></label></td><td class="ans"><input type="checkbox" id="ethnic"><label for="ethnic" class="A"><div class="label">民族の</div></label></td></tr>
-    <tr><td><label for="dominate"><div class="label">dominate</div></label></td><td class="ans"><input type="checkbox" id="dominate"><label for="dominate" class="A"><div class="label">～を支配する</div></label></td></tr>
-    <tr><td><label for="heritage"><div class="label">heritage</div></label></td><td class="ans"><input type="checkbox" id="heritage"><label for="heritage" class="A"><div class="label">遺産</div></label></td></tr>
-    <tr><td><label for="negotiate"><div class="label">negotiate</div></label></td><td class="ans"><input type="checkbox" id="negotiate"><label for="negotiate" class="A"><div class="label">交渉する</div></label></td></tr>
-    <tr><td><label for="fertile"><div class="label">fertile</div></label></td><td class="ans"><input type="checkbox" id="fertile"><label for="fertile" class="A"><div class="label">肥えた</div></label></td></tr>
-    <tr><td><label for="eliminate"><div class="label">eliminate</div></label></td><td class="ans"><input type="checkbox" id="eliminate"><label for="eliminate" class="A"><div class="label">～を取り除く</div></label></td></tr>
-    <tr><td><label for="distinctive"><div class="label">distinctive</div></label></td><td class="ans"><input type="checkbox" id="distinctive"><label for="distinctive" class="A"><div class="label">特有の</div></label></td></tr>
-    <tr><td><label for="prejudice"><div class="label">prejudice</div></label></td><td class="ans"><input type="checkbox" id="prejudice"><label for="prejudice" class="A"><div class="label">偏見</div></label></td></tr>
-    <tr><td><label for="historic"><div class="label">historic</div></label></td><td class="ans"><input type="checkbox" id="historic"><label for="historic" class="A"><div class="label">歴史上重要な</div></label></td></tr>
-    <tr><td><label for="distinct"><div class="label">distinct</div></label></td><td class="ans"><input type="checkbox" id="distinct"><label for="distinct" class="A"><div class="label">全く異なった</div></label></td></tr>
-    <tr><td><label for="originate"><div class="label">originate</div></label></td><td class="ans"><input type="checkbox" id="originate"><label for="originate" class="A"><div class="label">由来する</div></label></td></tr>
-    <tr><td><label for="revive"><div class="label">revive</div></label></td><td class="ans"><input type="checkbox" id="revive"><label for="revive" class="A"><div class="label">～を生き返らせる</div></label></td></tr>
-    <tr><td><label for="treaty"><div class="label">treaty</div></label></td><td class="ans"><input type="checkbox" id="treaty"><label for="treaty" class="A"><div class="label">条約</div></label></td></tr>
-    <tr><td><label for="declare"><div class="label">declare</div></label></td><td class="ans"><input type="checkbox" id="declare"><label for="declare" class="A"><div class="label">～を宣言する</div></label></td></tr>
-    <tr><td><label for="dump"><div class="label">dump</div></label></td><td class="ans"><input type="checkbox" id="dump"><label for="dump" class="A"><div class="label">～をどさっと落とす</div></label></td></tr>
-    <tr><td><label for="exploit"><div class="label">exploit</div></label></td><td class="ans"><input type="checkbox" id="exploit"><label for="exploit" class="A"><div class="label">～を搾取する</div></label></td></tr>
-    <tr><td><label for="halt"><div class="label">halt</div></label></td><td class="ans"><input type="checkbox" id="halt"><label for="halt" class="A"><div class="label">停止する</div></label></td></tr>
-    <tr><td><label for="territory"><div class="label">territory</div></label></td><td class="ans"><input type="checkbox" id="territory"><label for="territory" class="A"><div class="label">領土</div></label></td></tr>
-    <tr><td><label for="multiple"><div class="label">multiple</div></label></td><td class="ans"><input type="checkbox" id="multiple"><label for="multiple" class="A"><div class="label">多数の</div></label></td></tr>
-    <tr><td><label for="facility"><div class="label">facility</div></label></td><td class="ans"><input type="checkbox" id="facility"><label for="facility" class="A"><div class="label">施設</div></label></td></tr>
-    <tr><td><label for="acknowledge"><div class="label">acknowledge</div></label></td><td class="ans"><input type="checkbox" id="acknowledge"><label for="acknowledge" class="A"><div class="label">～を認める</div></label></td></tr>
-    <tr><td><label for="boundary"><div class="label">boundary</div></label></td><td class="ans"><input type="checkbox" id="boundary"><label for="boundary" class="A"><div class="label">境界線</div></label></td></tr>
-    <tr><td><label for="extract"><div class="label">extract</div></label></td><td class="ans"><input type="checkbox" id="extract"><label for="extract" class="A"><div class="label">～を引き抜く</div></label></td></tr>
-    <tr><td><label for="dispute"><div class="label">dispute</div></label></td><td class="ans"><input type="checkbox" id="dispute"><label for="dispute" class="A"><div class="label">論争</div></label></td></tr>
-    <tr><td><label for="frontier"><div class="label">frontier</div></label></td><td class="ans"><input type="checkbox" id="frontier"><label for="frontier" class="A"><div class="label">辺境</div></label></td></tr>
-    <tr><td><label for="exploration"><div class="label">exploration</div></label></td><td class="ans"><input type="checkbox" id="exploration"><label for="exploration" class="A"><div class="label">探査</div></label></td></tr>
-    <tr><td><label for="abundant"><div class="label">abundant</div></label></td><td class="ans"><input type="checkbox" id="abundant"><label for="abundant" class="A"><div class="label">豊富な</div></label></td></tr>
-    <tr><td><label for="commerce"><div class="label">commerce</div></label></td><td class="ans"><input type="checkbox" id="commerce"><label for="commerce" class="A"><div class="label">商業</div></label></td></tr>
-    <tr><td><label for="pioneer"><div class="label">pioneer</div></label></td><td class="ans"><input type="checkbox" id="pioneer"><label for="pioneer" class="A"><div class="label">先駆者</div></label></td></tr>
-    <tr><td><label for="realistic"><div class="label">realistic</div></label></td><td class="ans"><input type="checkbox" id="realistic"><label for="realistic" class="A"><div class="label">現実的な</div></label></td></tr>
-    <tr><td><label for="ownership"><div class="label">ownership</div></label></td><td class="ans"><input type="checkbox" id="ownership"><label for="ownership" class="A"><div class="label">所有</div></label></td></tr>
-    <tr><td><label for="humanity"><div class="label">humanity</div></label></td><td class="ans"><input type="checkbox" id="humanity"><label for="humanity" class="A"><div class="label">人道</div></label></td></tr>
-    <tr><td><label for="prohibit"><div class="label">prohibit</div></label></td><td class="ans"><input type="checkbox" id="prohibit"><label for="prohibit" class="A"><div class="label">～を禁止する</div></label></td></tr>
-    <tr><td><label for="implement"><div class="label">implement</div></label></td><td class="ans"><input type="checkbox" id="implement"><label for="implement" class="A"><div class="label">～を実行する</div></label></td></tr>
-    <tr><td><label for="satellite"><div class="label">satellite</div></label></td><td class="ans"><input type="checkbox" id="satellite"><label for="satellite" class="A"><div class="label">人工衛星</div></label></td></tr>
-    <tr><td><label for="solar"><div class="label">solar</div></label></td><td class="ans"><input type="checkbox" id="solar"><label for="solar" class="A"><div class="label">太陽の</div></label></td></tr>
-    <tr><td><label for="misery"><div class="label">misery</div></label></td><td class="ans"><input type="checkbox" id="misery"><label for="misery" class="A"><div class="label">悲惨</div></label></td></tr>
-    <tr><td><label for="consequence"><div class="label">consequence</div></label></td><td class="ans"><input type="checkbox" id="consequence"><label for="consequence" class="A"><div class="label">結果</div></label></td></tr>
-    <tr><td><label for="orphan"><div class="label">orphan</div></label></td><td class="ans"><input type="checkbox" id="orphan"><label for="orphan" class="A"><div class="label">孤児</div></label></td></tr>
-    <tr><td><label for="shatter"><div class="label">shatter</div></label></td><td class="ans"><input type="checkbox" id="shatter"><label for="shatter" class="A"><div class="label">～を粉々にする</div></label></td></tr>
-    <tr><td><label for="devote"><div class="label">devote</div></label></td><td class="ans"><input type="checkbox" id="devote"><label for="devote" class="A"><div class="label">～をささげる</div></label></td></tr>
-    <tr><td><label for="mission"><div class="label">mission</div></label></td><td class="ans"><input type="checkbox" id="mission"><label for="mission" class="A"><div class="label">使節団</div></label></td></tr>
-    <tr><td><label for="refuge"><div class="label">refuge</div></label></td><td class="ans"><input type="checkbox" id="refuge"><label for="refuge" class="A"><div class="label">避難</div></label></td></tr>
-    <tr><td><label for="nutrition"><div class="label">nutrition</div></label></td><td class="ans"><input type="checkbox" id="nutrition"><label for="nutrition" class="A"><div class="label">栄養補給</div></label></td></tr>
-    <tr><td><label for="prosper"><div class="label">prosper</div></label></td><td class="ans"><input type="checkbox" id="prosper"><label for="prosper" class="A"><div class="label">栄える</div></label></td></tr>
-    <tr><td><label for="publicity"><div class="label">publicity</div></label></td><td class="ans"><input type="checkbox" id="publicity"><label for="publicity" class="A"><div class="label">知れ渡ること</div></label></td></tr>
-    <tr><td><label for="donation"><div class="label">donation</div></label></td><td class="ans"><input type="checkbox" id="donation"><label for="donation" class="A"><div class="label">寄付</div></label></td></tr>
-    <tr><td><label for="applaud"><div class="label">applaud</div></label></td><td class="ans"><input type="checkbox" id="applaud"><label for="applaud" class="A"><div class="label">拍手を送る</div></label></td></tr>
-    <tr><td><label for="distinguished"><div class="label">distinguished</div></label></td><td class="ans"><input type="checkbox" id="distinguished"><label for="distinguished" class="A"><div class="label">優れた</div></label></td></tr>
-    <tr><td><label for="fame"><div class="label">fame</div></label></td><td class="ans"><input type="checkbox" id="fame"><label for="fame" class="A"><div class="label">名声</div></label></td></tr>
-    <tr><td><label for="reputation"><div class="label">reputation</div></label></td><td class="ans"><input type="checkbox" id="reputation"><label for="reputation" class="A"><div class="label">評判</div></label></td></tr>
-    <tr><td><label for="ambassador"><div class="label">ambassador</div></label></td><td class="ans"><input type="checkbox" id="ambassador"><label for="ambassador" class="A"><div class="label">大使</div></label></td></tr>
-    <tr><td><label for="stimulate"><div class="label">stimulate</div></label></td><td class="ans"><input type="checkbox" id="stimulate"><label for="stimulate" class="A"><div class="label">～を刺激する</div></label></td></tr>
-    <tr><td><label for="dedicate"><div class="label">dedicate</div></label></td><td class="ans"><input type="checkbox" id="dedicate"><label for="dedicate" class="A"><div class="label">～をささげる</div></label></td></tr>
-    <tr><td><label for="regional"><div class="label">regional</div></label></td><td class="ans"><input type="checkbox" id="regional"><label for="regional" class="A"><div class="label">地方の</div></label></td></tr>
-    <tr><td><label for="voluntary"><div class="label">voluntary</div></label></td><td class="ans"><input type="checkbox" id="voluntary"><label for="voluntary" class="A"><div class="label">自発的な</div></label></td></tr>
-    <tr><td><label for="awareness"><div class="label">awareness</div></label></td><td class="ans"><input type="checkbox" id="awareness"><label for="awareness" class="A"><div class="label">認識</div></label></td></tr>
-    <tr><td><label for="candidate"><div class="label">candidate</div></label></td><td class="ans"><input type="checkbox" id="candidate"><label for="candidate" class="A"><div class="label">立候補者</div></label></td></tr>
-    <tr><td><label for="commitment"><div class="label">commitment</div></label></td><td class="ans"><input type="checkbox" id="commitment"><label for="commitment" class="A"><div class="label">誓約</div></label></td></tr>
-    <tr><td><label for="considerably"><div class="label">considerably</div></label></td><td class="ans"><input type="checkbox" id="considerably"><label for="considerably" class="A"><div class="label">かなり</div></label></td></tr>
-    <tr><td><label for="grief"><div class="label">grief</div></label></td><td class="ans"><input type="checkbox" id="grief"><label for="grief" class="A"><div class="label">深い悲しみ</div></label></td></tr>
-    <tr><td><label for="deadly"><div class="label">deadly</div></label></td><td class="ans"><input type="checkbox" id="deadly"><label for="deadly" class="A"><div class="label">致命的な</div></label></td></tr>
-    <tr><td><label for="personnel"><div class="label">personnel</div></label></td><td class="ans"><input type="checkbox" id="personnel"><label for="personnel" class="A"><div class="label">全職員</div></label></td></tr>
-    <tr><td><label for="abandon"><div class="label">abandon</div></label></td><td class="ans"><input type="checkbox" id="abandon"><label for="abandon" class="A"><div class="label">～を見捨てる</div></label></td></tr>
-    <tr><td><label for="inflict"><div class="label">inflict</div></label></td><td class="ans"><input type="checkbox" id="inflict"><label for="inflict" class="A"><div class="label">～を負わせる</div></label></td></tr>
-    <tr><td><label for="resident"><div class="label">resident</div></label></td><td class="ans"><input type="checkbox" id="resident"><label for="resident" class="A"><div class="label">居住者</div></label></td></tr>
-    <tr><td><label for="optimistic"><div class="label">optimistic</div></label></td><td class="ans"><input type="checkbox" id="optimistic"><label for="optimistic" class="A"><div class="label">楽観的な</div></label></td></tr>
-    <tr><td><label for="forbid"><div class="label">forbid</div></label></td><td class="ans"><input type="checkbox" id="forbid"><label for="forbid" class="A"><div class="label">～を禁じる</div></label></td></tr>
-    <tr><td><label for="storage"><div class="label">storage</div></label></td><td class="ans"><input type="checkbox" id="storage"><label for="storage" class="A"><div class="label">貯蔵</div></label></td></tr>
-    <tr><td><label for="wicked"><div class="label">wicked</div></label></td><td class="ans"><input type="checkbox" id="wicked"><label for="wicked" class="A"><div class="label">悪い</div></label></td></tr>
-    <tr><td><label for="negotiation"><div class="label">negotiation</div></label></td><td class="ans"><input type="checkbox" id="negotiation"><label for="negotiation" class="A"><div class="label">交渉</div></label></td></tr>
-    <tr><td><label for="dialogue"><div class="label">dialogue</div></label></td><td class="ans"><input type="checkbox" id="dialogue"><label for="dialogue" class="A"><div class="label">対話</div></label></td></tr>
+/*表の書式設定*/
+table {
+border-collapse: collapse;
+}
+td {
+border: solid #000000 1px;
+}
+.ans {
+width: 60dvw; /*答えの列を画面幅の60％に設定*/
+}
+.label {
+width: 100%; /*ラベルを囲うdivをセル幅いっぱいに設定*/
+}
+</style>
+</head>
+<body>
+<input type="radio" id="ohp" name="size" checked><label for="ohp">100%</label>
+<input type="radio" id="ohtp" name="size"><label for="ohtp">120%</label>
+<input type="radio" id="ohfp" name="size"><label for="ohfp">140%</label>
+<table>
+<tr><td><label for="biology"><div class="label">biology</div></label></td><td class="ans"><input type="checkbox" id="biology"><label for="biology" class="A"><div class="label">生物学</div></label></td></tr>
+<tr><td><label for="fascinate"><div class="label">fascinate</div></label></td><td class="ans"><input type="checkbox" id="fascinate"><label for="fascinate" class="A"><div class="label">～を魅了する</div></label></td></tr>
+<tr><td><label for="discourage"><div class="label">discourage</div></label></td><td class="ans"><input type="checkbox" id="discourage"><label for="discourage" class="A"><div class="label">～をがっかりさせーーーーーる</div></label></td></tr>
+<tr><td><label for="architecture"><div class="label">architecture</div></label></td><td class="ans"><input type="checkbox" id="architecture"><label for="architecture" class="A"><div class="label">建築</div></label></td></tr>
+<tr><td><label for="tissue"><div class="label">tissue</div></label></td><td class="ans"><input type="checkbox" id="tissue"><label for="tissue" class="A"><div class="label">組織</div></label></td></tr>
+<tr><td><label for="mechanism"><div class="label">mechanism</div></label></td><td class="ans"><input type="checkbox" id="mechanism"><label for="mechanism" class="A"><div class="label">構造</div></label></td></tr>
+<tr><td><label for="transmit"><div class="label">transmit</div></label></td><td class="ans"><input type="checkbox" id="transmit"><label for="transmit" class="A"><div class="label">～を送信する</div></label></td></tr>
+<tr><td><label for="unlock"><div class="label">unlock</div></label></td><td class="ans"><input type="checkbox" id="unlock"><label for="unlock" class="A"><div class="label">～の錠を開ける</div></label></td></tr>
+<tr><td><label for="acquisition"><div class="label">acquisition</div></label></td><td class="ans"><input type="checkbox" id="acquisition"><label for="acquisition" class="A"><div class="label">獲得</div></label></td></tr>
+<tr><td><label for="capable"><div class="label">capable</div></label></td><td class="ans"><input type="checkbox" id="capable"><label for="capable" class="A"><div class="label">能力のある</div></label></td></tr>
+<tr><td><label for="reproduce"><div class="label">reproduce</div></label></td><td class="ans"><input type="checkbox" id="reproduce"><label for="reproduce" class="A"><div class="label">～を複写する</div></label></td></tr>
+<tr><td><label for="comprehend"><div class="label">comprehend</div></label></td><td class="ans"><input type="checkbox" id="comprehend"><label for="comprehend" class="A"><div class="label">～を理解する</div></label></td></tr>
+<tr><td><label for="vessel"><div class="label">vessel</div></label></td><td class="ans"><input type="checkbox" id="vessel"><label for="vessel" class="A"><div class="label">船</div></label></td></tr>
+<tr><td><label for="breakdown"><div class="label">breakdown</div></label></td><td class="ans"><input type="checkbox" id="breakdown"><label for="breakdown" class="A"><div class="label">崩壊</div></label></td></tr>
+<tr><td><label for="orbit"><div class="label">orbit</div></label></td><td class="ans"><input type="checkbox" id="orbit"><label for="orbit" class="A"><div class="label">軌道</div></label></td></tr>
+<tr><td><label for="external"><div class="label">external</div></label></td><td class="ans"><input type="checkbox" id="external"><label for="external" class="A"><div class="label">外部の</div></label></td></tr>
+<tr><td><label for="astronaut"><div class="label">astronaut</div></label></td><td class="ans"><input type="checkbox" id="astronaut"><label for="astronaut" class="A"><div class="label">宇宙飛行士</div></label></td></tr>
+<tr><td><label for="fierce"><div class="label">fierce</div></label></td><td class="ans"><input type="checkbox" id="fierce"><label for="fierce" class="A"><div class="label">強烈な</div></label></td></tr>
+<tr><td><label for="discipline"><div class="label">discipline</div></label></td><td class="ans"><input type="checkbox" id="discipline"><label for="discipline" class="A"><div class="label">鍛錬</div></label></td></tr>
+<tr><td><label for="vacuum"><div class="label">vacuum</div></label></td><td class="ans"><input type="checkbox" id="vacuum"><label for="vacuum" class="A"><div class="label">真空</div></label></td></tr>
+<tr><td><label for="fantasy"><div class="label">fantasy</div></label></td><td class="ans"><input type="checkbox" id="fantasy"><label for="fantasy" class="A"><div class="label">空想</div></label></td></tr>
+<tr><td><label for="tense"><div class="label">tense</div></label></td><td class="ans"><input type="checkbox" id="tense"><label for="tense" class="A"><div class="label">緊張した</div></label></td></tr>
+<tr><td><label for="gravity"><div class="label">gravity</div></label></td><td class="ans"><input type="checkbox" id="gravity"><label for="gravity" class="A"><div class="label">重力</div></label></td></tr>
+<tr><td><label for="ensure"><div class="label">ensure</div></label></td><td class="ans"><input type="checkbox" id="ensure"><label for="ensure" class="A"><div class="label">～を保証する</div></label></td></tr>
+<tr><td><label for="gratitude"><div class="label">gratitude</div></label></td><td class="ans"><input type="checkbox" id="gratitude"><label for="gratitude" class="A"><div class="label">感謝</div></label></td></tr>
+<tr><td><label for="glory"><div class="label">glory</div></label></td><td class="ans"><input type="checkbox" id="glory"><label for="glory" class="A"><div class="label">栄光</div></label></td></tr>
+<tr><td><label for="headline"><div class="label">headline</div></label></td><td class="ans"><input type="checkbox" id="headline"><label for="headline" class="A"><div class="label">大見出し</div></label></td></tr>
+<tr><td><label for="award"><div class="label">award</div></label></td><td class="ans"><input type="checkbox" id="award"><label for="award" class="A"><div class="label">賞</div></label></td></tr>
+<tr><td><label for="indifferent"><div class="label">indifferent</div></label></td><td class="ans"><input type="checkbox" id="indifferent"><label for="indifferent" class="A"><div class="label">無関心な</div></label></td></tr>
+<tr><td><label for="prospect"><div class="label">prospect</div></label></td><td class="ans"><input type="checkbox" id="prospect"><label for="prospect" class="A"><div class="label">見込み</div></label></td></tr>
+<tr><td><label for="uncover"><div class="label">uncover</div></label></td><td class="ans"><input type="checkbox" id="uncover"><label for="uncover" class="A"><div class="label">～を暴露する</div></label></td></tr>
+<tr><td><label for="compound"><div class="label">compound</div></label></td><td class="ans"><input type="checkbox" id="compound"><label for="compound" class="A"><div class="label">化合物</div></label></td></tr>
+<tr><td><label for="achievement"><div class="label">achievement</div></label></td><td class="ans"><input type="checkbox" id="achievement"><label for="achievement" class="A"><div class="label">業績</div></label></td></tr>
+<tr><td><label for="contribution"><div class="label">contribution</div></label></td><td class="ans"><input type="checkbox" id="contribution"><label for="contribution" class="A"><div class="label">寄付</div></label></td></tr>
+<tr><td><label for="peer"><div class="label">peer</div></label></td><td class="ans"><input type="checkbox" id="peer"><label for="peer" class="A"><div class="label">同等の人</div></label></td></tr>
+<tr><td><label for="diligent"><div class="label">diligent</div></label></td><td class="ans"><input type="checkbox" id="diligent"><label for="diligent" class="A"><div class="label">勤勉な</div></label></td></tr>
+<tr><td><label for="astronomy"><div class="label">astronomy</div></label></td><td class="ans"><input type="checkbox" id="astronomy"><label for="astronomy" class="A"><div class="label">天文学</div></label></td></tr>
+<tr><td><label for="revolve"><div class="label">revolve</div></label></td><td class="ans"><input type="checkbox" id="revolve"><label for="revolve" class="A"><div class="label">回転する</div></label></td></tr>
+<tr><td><label for="visible"><div class="label">visible</div></label></td><td class="ans"><input type="checkbox" id="visible"><label for="visible" class="A"><div class="label">目に見える</div></label></td></tr>
+<tr><td><label for="sophisticated"><div class="label">sophisticated</div></label></td><td class="ans"><input type="checkbox" id="sophisticated"><label for="sophisticated" class="A"><div class="label">洗練された</div></label></td></tr>
+<tr><td><label for="indirect"><div class="label">indirect</div></label></td><td class="ans"><input type="checkbox" id="indirect"><label for="indirect" class="A"><div class="label">間接的な</div></label></td></tr>
+<tr><td><label for="dim"><div class="label">dim</div></label></td><td class="ans"><input type="checkbox" id="dim"><label for="dim" class="A"><div class="label">薄暗い</div></label></td></tr>
+<tr><td><label for="consistent"><div class="label">consistent</div></label></td><td class="ans"><input type="checkbox" id="consistent"><label for="consistent" class="A"><div class="label">首尾一貫した</div></label></td></tr>
+<tr><td><label for="interval"><div class="label">interval</div></label></td><td class="ans"><input type="checkbox" id="interval"><label for="interval" class="A"><div class="label">間隔</div></label></td></tr>
+<tr><td><label for="evident"><div class="label">evident</div></label></td><td class="ans"><input type="checkbox" id="evident"><label for="evident" class="A"><div class="label">明らかな</div></label></td></tr>
+<tr><td><label for="limitation"><div class="label">limitation</div></label></td><td class="ans"><input type="checkbox" id="limitation"><label for="limitation" class="A"><div class="label">制限</div></label></td></tr>
+<tr><td><label for="nonetheless"><div class="label">nonetheless</div></label></td><td class="ans"><input type="checkbox" id="nonetheless"><label for="nonetheless" class="A"><div class="label">それにもかかわらず</div></label></td></tr>
+<tr><td><label for="numerous"><div class="label">numerous</div></label></td><td class="ans"><input type="checkbox" id="numerous"><label for="numerous" class="A"><div class="label">数多くの</div></label></td></tr>
+<tr><td><label for="uneasy"><div class="label">uneasy</div></label></td><td class="ans"><input type="checkbox" id="uneasy"><label for="uneasy" class="A"><div class="label">不安な</div></label></td></tr>
+<tr><td><label for="colony"><div class="label">colony</div></label></td><td class="ans"><input type="checkbox" id="colony"><label for="colony" class="A"><div class="label">植民地</div></label></td></tr>
+<tr><td><label for="reside"><div class="label">reside</div></label></td><td class="ans"><input type="checkbox" id="reside"><label for="reside" class="A"><div class="label">住む</div></label></td></tr>
+<tr><td><label for="multitude"><div class="label">multitude</div></label></td><td class="ans"><input type="checkbox" id="multitude"><label for="multitude" class="A"><div class="label">多数</div></label></td></tr>
+<tr><td><label for="classify"><div class="label">classify</div></label></td><td class="ans"><input type="checkbox" id="classify"><label for="classify" class="A"><div class="label">～を分類する</div></label></td></tr>
+<tr><td><label for="organism"><div class="label">organism</div></label></td><td class="ans"><input type="checkbox" id="organism"><label for="organism" class="A"><div class="label">生物</div></label></td></tr>
+<tr><td><label for="infection"><div class="label">infection</div></label></td><td class="ans"><input type="checkbox" id="infection"><label for="infection" class="A"><div class="label">伝染病</div></label></td></tr>
+<tr><td><label for="internal"><div class="label">internal</div></label></td><td class="ans"><input type="checkbox" id="internal"><label for="internal" class="A"><div class="label">内部の</div></label></td></tr>
+<tr><td><label for="digest"><div class="label">digest</div></label></td><td class="ans"><input type="checkbox" id="digest"><label for="digest" class="A"><div class="label">～を消化する</div></label></td></tr>
+<tr><td><label for="strengthen"><div class="label">strengthen</div></label></td><td class="ans"><input type="checkbox" id="strengthen"><label for="strengthen" class="A"><div class="label">～を強くする</div></label></td></tr>
+<tr><td><label for="reveal"><div class="label">reveal</div></label></td><td class="ans"><input type="checkbox" id="reveal"><label for="reveal" class="A"><div class="label">～を明らかにする</div></label></td></tr>
+<tr><td><label for="dwell"><div class="label">dwell</div></label></td><td class="ans"><input type="checkbox" id="dwell"><label for="dwell" class="A"><div class="label">住む</div></label></td></tr>
+<tr><td><label for="prefecture"><div class="label">prefecture</div></label></td><td class="ans"><input type="checkbox" id="prefecture"><label for="prefecture" class="A"><div class="label">県</div></label></td></tr>
+<tr><td><label for="continental"><div class="label">continental</div></label></td><td class="ans"><input type="checkbox" id="continental"><label for="continental" class="A"><div class="label">大陸の</div></label></td></tr>
+<tr><td><label for="accessible"><div class="label">accessible</div></label></td><td class="ans"><input type="checkbox" id="accessible"><label for="accessible" class="A"><div class="label">行きやすい</div></label></td></tr>
+<tr><td><label for="strain"><div class="label">strain</div></label></td><td class="ans"><input type="checkbox" id="strain"><label for="strain" class="A"><div class="label">精神的緊張</div></label></td></tr>
+<tr><td><label for="barrier"><div class="label">barrier</div></label></td><td class="ans"><input type="checkbox" id="barrier"><label for="barrier" class="A"><div class="label">障壁</div></label></td></tr>
+<tr><td><label for="circulation"><div class="label">circulation</div></label></td><td class="ans"><input type="checkbox" id="circulation"><label for="circulation" class="A"><div class="label">循環</div></label></td></tr>
+<tr><td><label for="current"><div class="label">current</div></label></td><td class="ans"><input type="checkbox" id="current"><label for="current" class="A"><div class="label">通貨</div></label></td></tr>
+<tr><td><label for="compulsory"><div class="label">compulsory</div></label></td><td class="ans"><input type="checkbox" id="compulsory"><label for="compulsory" class="A"><div class="label">義務的な</div></label></td></tr>
+<tr><td><label for="oblige"><div class="label">oblige</div></label></td><td class="ans"><input type="checkbox" id="oblige"><label for="oblige" class="A"><div class="label">～に義務づける</div></label></td></tr>
+<tr><td><label for="obtain"><div class="label">obtain</div></label></td><td class="ans"><input type="checkbox" id="obtain"><label for="obtain" class="A"><div class="label">～を獲得する</div></label></td></tr>
+<tr><td><label for="entitle"><div class="label">entitle</div></label></td><td class="ans"><input type="checkbox" id="entitle"><label for="entitle" class="A"><div class="label">～に資格を与える</div></label></td></tr>
+<tr><td><label for="unite"><div class="label">unite</div></label></td><td class="ans"><input type="checkbox" id="unite"><label for="unite" class="A"><div class="label">団結する</div></label></td></tr>
+<tr><td><label for="respectable"><div class="label">respectable</div></label></td><td class="ans"><input type="checkbox" id="respectable"><label for="respectable" class="A"><div class="label">ちゃんとした</div></label></td></tr>
+<tr><td><label for="universal"><div class="label">universal</div></label></td><td class="ans"><input type="checkbox" id="universal"><label for="universal" class="A"><div class="label">普遍的な</div></label></td></tr>
+<tr><td><label for="brutal"><div class="label">brutal</div></label></td><td class="ans"><input type="checkbox" id="brutal"><label for="brutal" class="A"><div class="label">残忍な</div></label></td></tr>
+<tr><td><label for="diplomatic"><div class="label">diplomatic</div></label></td><td class="ans"><input type="checkbox" id="diplomatic"><label for="diplomatic" class="A"><div class="label">外交の</div></label></td></tr>
+<tr><td><label for="counsel"><div class="label">counsel</div></label></td><td class="ans"><input type="checkbox" id="counsel"><label for="counsel" class="A"><div class="label">助言</div></label></td></tr>
+<tr><td><label for="govern"><div class="label">govern</div></label></td><td class="ans"><input type="checkbox" id="govern"><label for="govern" class="A"><div class="label">～を統治する</div></label></td></tr>
+<tr><td><label for="representative"><div class="label">representative</div></label></td><td class="ans"><input type="checkbox" id="representative"><label for="representative" class="A"><div class="label">代表者</div></label></td></tr>
+<tr><td><label for="cooperate"><div class="label">cooperate</div></label></td><td class="ans"><input type="checkbox" id="cooperate"><label for="cooperate" class="A"><div class="label">協力する</div></label></td></tr>
+<tr><td><label for="assess"><div class="label">assess</div></label></td><td class="ans"><input type="checkbox" id="assess"><label for="assess" class="A"><div class="label">～を評価する</div></label></td></tr>
+<tr><td><label for="headquarters"><div class="label">headquarters</div></label></td><td class="ans"><input type="checkbox" id="headquarters"><label for="headquarters" class="A"><div class="label">本部</div></label></td></tr>
+<tr><td><label for="parliament"><div class="label">parliament</div></label></td><td class="ans"><input type="checkbox" id="parliament"><label for="parliament" class="A"><div class="label">国会</div></label></td></tr>
+<tr><td><label for="convention"><div class="label">convention</div></label></td><td class="ans"><input type="checkbox" id="convention"><label for="convention" class="A"><div class="label">慣習</div></label></td></tr>
+<tr><td><label for="competitive"><div class="label">competitive</div></label></td><td class="ans"><input type="checkbox" id="competitive"><label for="competitive" class="A"><div class="label">競争の</div></label></td></tr>
+<tr><td><label for="educated"><div class="label">educated</div></label></td><td class="ans"><input type="checkbox" id="educated"><label for="educated" class="A"><div class="label">教養のある</div></label></td></tr>
+<tr><td><label for="burden"><div class="label">burden</div></label></td><td class="ans"><input type="checkbox" id="burden"><label for="burden" class="A"><div class="label">負担</div></label></td></tr>
+<tr><td><label for="repay"><div class="label">repay</div></label></td><td class="ans"><input type="checkbox" id="repay"><label for="repay" class="A"><div class="label">～を返済する</div></label></td></tr>
+<tr><td><label for="progressive"><div class="label">progressive</div></label></td><td class="ans"><input type="checkbox" id="progressive"><label for="progressive" class="A"><div class="label">進歩的な</div></label></td></tr>
+<tr><td><label for="elementary"><div class="label">elementary</div></label></td><td class="ans"><input type="checkbox" id="elementary"><label for="elementary" class="A"><div class="label">小学校の</div></label></td></tr>
+<tr><td><label for="undergraduate"><div class="label">undergraduate</div></label></td><td class="ans"><input type="checkbox" id="undergraduate"><label for="undergraduate" class="A"><div class="label">学部生</div></label></td></tr>
+<tr><td><label for="extensive"><div class="label">extensive</div></label></td><td class="ans"><input type="checkbox" id="extensive"><label for="extensive" class="A"><div class="label">広範な</div></label></td></tr>
+<tr><td><label for="equip"><div class="label">equip</div></label></td><td class="ans"><input type="checkbox" id="equip"><label for="equip" class="A"><div class="label">～に備え付ける</div></label></td></tr>
+<tr><td><label for="privilege"><div class="label">privilege</div></label></td><td class="ans"><input type="checkbox" id="privilege"><label for="privilege" class="A"><div class="label">特権</div></label></td></tr>
+<tr><td><label for="excessive"><div class="label">excessive</div></label></td><td class="ans"><input type="checkbox" id="excessive"><label for="excessive" class="A"><div class="label">過剰な</div></label></td></tr>
+<tr><td><label for="prosperity"><div class="label">prosperity</div></label></td><td class="ans"><input type="checkbox" id="prosperity"><label for="prosperity" class="A"><div class="label">繁栄</div></label></td></tr>
+<tr><td><label for="apparent"><div class="label">apparent</div></label></td><td class="ans"><input type="checkbox" id="apparent"><label for="apparent" class="A"><div class="label">明白な</div></label></td></tr>
+<tr><td><label for="rigid"><div class="label">rigid</div></label></td><td class="ans"><input type="checkbox" id="rigid"><label for="rigid" class="A"><div class="label">厳格な</div></label></td></tr>
+<tr><td><label for="ridiculous"><div class="label">ridiculous</div></label></td><td class="ans"><input type="checkbox" id="ridiculous"><label for="ridiculous" class="A"><div class="label">ばかげた</div></label></td></tr>
+<tr><td><label for="register"><div class="label">register</div></label></td><td class="ans"><input type="checkbox" id="register"><label for="register" class="A"><div class="label">～を登録する</div></label></td></tr>
+<tr><td><label for="bureau"><div class="label">bureau</div></label></td><td class="ans"><input type="checkbox" id="bureau"><label for="bureau" class="A"><div class="label">局</div></label></td></tr>
+<tr><td><label for="assign"><div class="label">assign</div></label></td><td class="ans"><input type="checkbox" id="assign"><label for="assign" class="A"><div class="label">～を任命する</div></label></td></tr>
+<tr><td><label for="insert"><div class="label">insert</div></label></td><td class="ans"><input type="checkbox" id="insert"><label for="insert" class="A"><div class="label">～を差し込む</div></label></td></tr>
+<tr><td><label for="absurd"><div class="label">absurd</div></label></td><td class="ans"><input type="checkbox" id="absurd"><label for="absurd" class="A"><div class="label">ばかげた</div></label></td></tr>
+<tr><td><label for="certificate"><div class="label">certificate</div></label></td><td class="ans"><input type="checkbox" id="certificate"><label for="certificate" class="A"><div class="label">証明書</div></label></td></tr>
+<tr><td><label for="sue"><div class="label">sue</div></label></td><td class="ans"><input type="checkbox" id="sue"><label for="sue" class="A"><div class="label">～を訴える</div></label></td></tr>
+<tr><td><label for="insure"><div class="label">insure</div></label></td><td class="ans"><input type="checkbox" id="insure"><label for="insure" class="A"><div class="label">～に保険を掛ける</div></label></td></tr>
+<tr><td><label for="accidental"><div class="label">accidental</div></label></td><td class="ans"><input type="checkbox" id="accidental"><label for="accidental" class="A"><div class="label">偶然の</div></label></td></tr>
+<tr><td><label for="distinction"><div class="label">distinction</div></label></td><td class="ans"><input type="checkbox" id="distinction"><label for="distinction" class="A"><div class="label">区別</div></label></td></tr>
+<tr><td><label for="massive"><div class="label">massive</div></label></td><td class="ans"><input type="checkbox" id="massive"><label for="massive" class="A"><div class="label">大きくて重い</div></label></td></tr>
+<tr><td><label for="proclaim"><div class="label">proclaim</div></label></td><td class="ans"><input type="checkbox" id="proclaim"><label for="proclaim" class="A"><div class="label">～を宣言する</div></label></td></tr>
+<tr><td><label for="federal"><div class="label">federal</div></label></td><td class="ans"><input type="checkbox" id="federal"><label for="federal" class="A"><div class="label">連邦の</div></label></td></tr>
+<tr><td><label for="wildlife"><div class="label">wildlife</div></label></td><td class="ans"><input type="checkbox" id="wildlife"><label for="wildlife" class="A"><div class="label">野生動物</div></label></td></tr>
+<tr><td><label for="diversity"><div class="label">diversity</div></label></td><td class="ans"><input type="checkbox" id="diversity"><label for="diversity" class="A"><div class="label">多様性</div></label></td></tr>
+<tr><td><label for="marine"><div class="label">marine</div></label></td><td class="ans"><input type="checkbox" id="marine"><label for="marine" class="A"><div class="label">海洋の</div></label></td></tr>
+<tr><td><label for="foster"><div class="label">foster</div></label></td><td class="ans"><input type="checkbox" id="foster"><label for="foster" class="A"><div class="label">～を促進する</div></label></td></tr>
+<tr><td><label for="philosophy"><div class="label">philosophy</div></label></td><td class="ans"><input type="checkbox" id="philosophy"><label for="philosophy" class="A"><div class="label">哲学</div></label></td></tr>
+<tr><td><label for="investment"><div class="label">investment</div></label></td><td class="ans"><input type="checkbox" id="investment"><label for="investment" class="A"><div class="label">投資</div></label></td></tr>
+<tr><td><label for="conservation"><div class="label">conservation</div></label></td><td class="ans"><input type="checkbox" id="conservation"><label for="conservation" class="A"><div class="label">保護</div></label></td></tr>
+<tr><td><label for="precisely"><div class="label">precisely</div></label></td><td class="ans"><input type="checkbox" id="precisely"><label for="precisely" class="A"><div class="label">正確に</div></label></td></tr>
+<tr><td><label for="ingredient"><div class="label">ingredient</div></label></td><td class="ans"><input type="checkbox" id="ingredient"><label for="ingredient" class="A"><div class="label">材料</div></label></td></tr>
+<tr><td><label for="purchase"><div class="label">purchase</div></label></td><td class="ans"><input type="checkbox" id="purchase"><label for="purchase" class="A"><div class="label">～を購入する</div></label></td></tr>
+<tr><td><label for="desirable"><div class="label">desirable</div></label></td><td class="ans"><input type="checkbox" id="desirable"><label for="desirable" class="A"><div class="label">望ましい</div></label></td></tr>
+<tr><td><label for="bug"><div class="label">bug</div></label></td><td class="ans"><input type="checkbox" id="bug"><label for="bug" class="A"><div class="label">虫</div></label></td></tr>
+<tr><td><label for="nuisance"><div class="label">nuisance</div></label></td><td class="ans"><input type="checkbox" id="nuisance"><label for="nuisance" class="A"><div class="label">迷惑</div></label></td></tr>
+<tr><td><label for="substance"><div class="label">substance</div></label></td><td class="ans"><input type="checkbox" id="substance"><label for="substance" class="A"><div class="label">物質</div></label></td></tr>
+<tr><td><label for="soak"><div class="label">soak</div></label></td><td class="ans"><input type="checkbox" id="soak"><label for="soak" class="A"><div class="label">～を浸す</div></label></td></tr>
+<tr><td><label for="accumulate"><div class="label">accumulate</div></label></td><td class="ans"><input type="checkbox" id="accumulate"><label for="accumulate" class="A"><div class="label">～を蓄積する</div></label></td></tr>
+<tr><td><label for="compromise"><div class="label">compromise</div></label></td><td class="ans"><input type="checkbox" id="compromise"><label for="compromise" class="A"><div class="label">妥協する</div></label></td></tr>
+<tr><td><label for="yield"><div class="label">yield</div></label></td><td class="ans"><input type="checkbox" id="yield"><label for="yield" class="A"><div class="label">～を生じさせる</div></label></td></tr>
+<tr><td><label for="exposure"><div class="label">exposure</div></label></td><td class="ans"><input type="checkbox" id="exposure"><label for="exposure" class="A"><div class="label">身をさらすこと</div></label></td></tr>
+<tr><td><label for="substitute"><div class="label">substitute</div></label></td><td class="ans"><input type="checkbox" id="substitute"><label for="substitute" class="A"><div class="label">代用品</div></label></td></tr>
+<tr><td><label for="craft"><div class="label">craft</div></label></td><td class="ans"><input type="checkbox" id="craft"><label for="craft" class="A"><div class="label">手工業</div></label></td></tr>
+<tr><td><label for="medieval"><div class="label">medieval</div></label></td><td class="ans"><input type="checkbox" id="medieval"><label for="medieval" class="A"><div class="label">中世の</div></label></td></tr>
+<tr><td><label for="ethics"><div class="label">ethics</div></label></td><td class="ans"><input type="checkbox" id="ethics"><label for="ethics" class="A"><div class="label">倫理</div></label></td></tr>
+<tr><td><label for="preservation"><div class="label">preservation</div></label></td><td class="ans"><input type="checkbox" id="preservation"><label for="preservation" class="A"><div class="label">保存</div></label></td></tr>
+<tr><td><label for="procedure"><div class="label">procedure</div></label></td><td class="ans"><input type="checkbox" id="procedure"><label for="procedure" class="A"><div class="label">手順</div></label></td></tr>
+<tr><td><label for="mixture"><div class="label">mixture</div></label></td><td class="ans"><input type="checkbox" id="mixture"><label for="mixture" class="A"><div class="label">組み合わせ</div></label></td></tr>
+<tr><td><label for="dye"><div class="label">dye</div></label></td><td class="ans"><input type="checkbox" id="dye"><label for="dye" class="A"><div class="label">～を染める</div></label></td></tr>
+<tr><td><label for="dispose"><div class="label">dispose</div></label></td><td class="ans"><input type="checkbox" id="dispose"><label for="dispose" class="A"><div class="label">処理する</div></label></td></tr>
+<tr><td><label for="landscape"><div class="label">landscape</div></label></td><td class="ans"><input type="checkbox" id="landscape"><label for="landscape" class="A"><div class="label">風景</div></label></td></tr>
+<tr><td><label for="abuse"><div class="label">abuse</div></label></td><td class="ans"><input type="checkbox" id="abuse"><label for="abuse" class="A"><div class="label">～を虐待する</div></label></td></tr>
+<tr><td><label for="violate"><div class="label">violate</div></label></td><td class="ans"><input type="checkbox" id="violate"><label for="violate" class="A"><div class="label">～に違反する</div></label></td></tr>
+<tr><td><label for="substantial"><div class="label">substantial</div></label></td><td class="ans"><input type="checkbox" id="substantial"><label for="substantial" class="A"><div class="label">かなりの</div></label></td></tr>
+<tr><td><label for="unpleasant"><div class="label">unpleasant</div></label></td><td class="ans"><input type="checkbox" id="unpleasant"><label for="unpleasant" class="A"><div class="label">不愉快な</div></label></td></tr>
+<tr><td><label for="symptom"><div class="label">symptom</div></label></td><td class="ans"><input type="checkbox" id="symptom"><label for="symptom" class="A"><div class="label">症状</div></label></td></tr>
+<tr><td><label for="dread"><div class="label">dread</div></label></td><td class="ans"><input type="checkbox" id="dread"><label for="dread" class="A"><div class="label">～を恐れる</div></label></td></tr>
+<tr><td><label for="remedy"><div class="label">remedy</div></label></td><td class="ans"><input type="checkbox" id="remedy"><label for="remedy" class="A"><div class="label">改善方法</div></label></td></tr>
+<tr><td><label for="fluid"><div class="label">fluid</div></label></td><td class="ans"><input type="checkbox" id="fluid"><label for="fluid" class="A"><div class="label">流体</div></label></td></tr>
+<tr><td><label for="supplement"><div class="label">supplement</div></label></td><td class="ans"><input type="checkbox" id="supplement"><label for="supplement" class="A"><div class="label">補足</div></label></td></tr>
+<tr><td><label for="fatal"><div class="label">fatal</div></label></td><td class="ans"><input type="checkbox" id="fatal"><label for="fatal" class="A"><div class="label">致命的な</div></label></td></tr>
+<tr><td><label for="diminish"><div class="label">diminish</div></label></td><td class="ans"><input type="checkbox" id="diminish"><label for="diminish" class="A"><div class="label">～を減らす</div></label></td></tr>
+<tr><td><label for="physician"><div class="label">physician</div></label></td><td class="ans"><input type="checkbox" id="physician"><label for="physician" class="A"><div class="label">医者</div></label></td></tr>
+<tr><td><label for="virus"><div class="label">virus</div></label></td><td class="ans"><input type="checkbox" id="virus"><label for="virus" class="A"><div class="label">ウイルス</div></label></td></tr>
+<tr><td><label for="sneeze"><div class="label">sneeze</div></label></td><td class="ans"><input type="checkbox" id="sneeze"><label for="sneeze" class="A"><div class="label">くしゃみをする</div></label></td></tr>
+<tr><td><label for="furthermore"><div class="label">furthermore</div></label></td><td class="ans"><input type="checkbox" id="furthermore"><label for="furthermore" class="A"><div class="label">さらに</div></label></td></tr>
+<tr><td><label for="chilly"><div class="label">chilly</div></label></td><td class="ans"><input type="checkbox" id="chilly"><label for="chilly" class="A"><div class="label">ひんやりとした</div></label></td></tr>
+<tr><td><label for="shiver"><div class="label">shiver</div></label></td><td class="ans"><input type="checkbox" id="shiver"><label for="shiver" class="A"><div class="label">震える</div></label></td></tr>
+<tr><td><label for="thermometer"><div class="label">thermometer</div></label></td><td class="ans"><input type="checkbox" id="thermometer"><label for="thermometer" class="A"><div class="label">温度計</div></label></td></tr>
+<tr><td><label for="significance"><div class="label">significance</div></label></td><td class="ans"><input type="checkbox" id="significance"><label for="significance" class="A"><div class="label">重大さ</div></label></td></tr>
+<tr><td><label for="confuse"><div class="label">confuse</div></label></td><td class="ans"><input type="checkbox" id="confuse"><label for="confuse" class="A"><div class="label">～を困惑させる</div></label></td></tr>
+<tr><td><label for="phenomenon"><div class="label">phenomenon</div></label></td><td class="ans"><input type="checkbox" id="phenomenon"><label for="phenomenon" class="A"><div class="label">現象</div></label></td></tr>
+<tr><td><label for="complexity"><div class="label">complexity</div></label></td><td class="ans"><input type="checkbox" id="complexity"><label for="complexity" class="A"><div class="label">複雑さ</div></label></td></tr>
+<tr><td><label for="predict"><div class="label">predict</div></label></td><td class="ans"><input type="checkbox" id="predict"><label for="predict" class="A"><div class="label">～を予言する</div></label></td></tr>
+<tr><td><label for="unlike"><div class="label">unlike</div></label></td><td class="ans"><input type="checkbox" id="unlike"><label for="unlike" class="A"><div class="label">似ていない</div></label></td></tr>
+<tr><td><label for="stability"><div class="label">stability</div></label></td><td class="ans"><input type="checkbox" id="stability"><label for="stability" class="A"><div class="label">安定</div></label></td></tr>
+<tr><td><label for="detect"><div class="label">detect</div></label></td><td class="ans"><input type="checkbox" id="detect"><label for="detect" class="A"><div class="label">～を発見する</div></label></td></tr>
+<tr><td><label for="environmental"><div class="label">environmental</div></label></td><td class="ans"><input type="checkbox" id="environmental"><label for="environmental" class="A"><div class="label">環境の</div></label></td></tr>
+<tr><td><label for="contribute"><div class="label">contribute</div></label></td><td class="ans"><input type="checkbox" id="contribute"><label for="contribute" class="A"><div class="label">～を寄付する</div></label></td></tr>
+<tr><td><label for="existence"><div class="label">existence</div></label></td><td class="ans"><input type="checkbox" id="existence"><label for="existence" class="A"><div class="label">存在</div></label></td></tr>
+<tr><td><label for="ambitious"><div class="label">ambitious</div></label></td><td class="ans"><input type="checkbox" id="ambitious"><label for="ambitious" class="A"><div class="label">野心のある</div></label></td></tr>
+<tr><td><label for="pavement"><div class="label">pavement</div></label></td><td class="ans"><input type="checkbox" id="pavement"><label for="pavement" class="A"><div class="label">舗装</div></label></td></tr>
+<tr><td><label for="convert"><div class="label">convert</div></label></td><td class="ans"><input type="checkbox" id="convert"><label for="convert" class="A"><div class="label">～を変える</div></label></td></tr>
+<tr><td><label for="conventional"><div class="label">conventional</div></label></td><td class="ans"><input type="checkbox" id="conventional"><label for="conventional" class="A"><div class="label">型にはまった</div></label></td></tr>
+<tr><td><label for="erect"><div class="label">erect</div></label></td><td class="ans"><input type="checkbox" id="erect"><label for="erect" class="A"><div class="label">～を建てる</div></label></td></tr>
+<tr><td><label for="modify"><div class="label">modify</div></label></td><td class="ans"><input type="checkbox" id="modify"><label for="modify" class="A"><div class="label">～を修正する</div></label></td></tr>
+<tr><td><label for="radical"><div class="label">radical</div></label></td><td class="ans"><input type="checkbox" id="radical"><label for="radical" class="A"><div class="label">徹底的な</div></label></td></tr>
+<tr><td><label for="suspend"><div class="label">suspend</div></label></td><td class="ans"><input type="checkbox" id="suspend"><label for="suspend" class="A"><div class="label">～を一時停止する</div></label></td></tr>
+<tr><td><label for="illustrate"><div class="label">illustrate</div></label></td><td class="ans"><input type="checkbox" id="illustrate"><label for="illustrate" class="A"><div class="label">～を説明する</div></label></td></tr>
+<tr><td><label for="perspective"><div class="label">perspective</div></label></td><td class="ans"><input type="checkbox" id="perspective"><label for="perspective" class="A"><div class="label">観点</div></label></td></tr>
+<tr><td><label for="appetite"><div class="label">appetite</div></label></td><td class="ans"><input type="checkbox" id="appetite"><label for="appetite" class="A"><div class="label">食欲</div></label></td></tr>
+<tr><td><label for="startle"><div class="label">startle</div></label></td><td class="ans"><input type="checkbox" id="startle"><label for="startle" class="A"><div class="label">～をびっくりさせる</div></label></td></tr>
+<tr><td><label for="feast"><div class="label">feast</div></label></td><td class="ans"><input type="checkbox" id="feast"><label for="feast" class="A"><div class="label">祝宴</div></label></td></tr>
+<tr><td><label for="objective"><div class="label">objective</div></label></td><td class="ans"><input type="checkbox" id="objective"><label for="objective" class="A"><div class="label">目的</div></label></td></tr>
+<tr><td><label for="starve"><div class="label">starve</div></label></td><td class="ans"><input type="checkbox" id="starve"><label for="starve" class="A"><div class="label">餓死する</div></label></td></tr>
+<tr><td><label for="ratio"><div class="label">ratio</div></label></td><td class="ans"><input type="checkbox" id="ratio"><label for="ratio" class="A"><div class="label">比率</div></label></td></tr>
+<tr><td><label for="globe"><div class="label">globe</div></label></td><td class="ans"><input type="checkbox" id="globe"><label for="globe" class="A"><div class="label">世界</div></label></td></tr>
+<tr><td><label for="minority"><div class="label">minority</div></label></td><td class="ans"><input type="checkbox" id="minority"><label for="minority" class="A"><div class="label">少数</div></label></td></tr>
+<tr><td><label for="ample"><div class="label">ample</div></label></td><td class="ans"><input type="checkbox" id="ample"><label for="ample" class="A"><div class="label">十分な</div></label></td></tr>
+<tr><td><label for="humble"><div class="label">humble</div></label></td><td class="ans"><input type="checkbox" id="humble"><label for="humble" class="A"><div class="label">謙虚な</div></label></td></tr>
+<tr><td><label for="confront"><div class="label">confront</div></label></td><td class="ans"><input type="checkbox" id="confront"><label for="confront" class="A"><div class="label">～に立ち向かう</div></label></td></tr>
+<tr><td><label for="immense"><div class="label">immense</div></label></td><td class="ans"><input type="checkbox" id="immense"><label for="immense" class="A"><div class="label">巨大な</div></label></td></tr>
+<tr><td><label for="consume"><div class="label">consume</div></label></td><td class="ans"><input type="checkbox" id="consume"><label for="consume" class="A"><div class="label">～を消費する</div></label></td></tr>
+<tr><td><label for="affection"><div class="label">affection</div></label></td><td class="ans"><input type="checkbox" id="affection"><label for="affection" class="A"><div class="label">愛情</div></label></td></tr>
+<tr><td><label for="commodity"><div class="label">commodity</div></label></td><td class="ans"><input type="checkbox" id="commodity"><label for="commodity" class="A"><div class="label">商品</div></label></td></tr>
+<tr><td><label for="profitable"><div class="label">profitable</div></label></td><td class="ans"><input type="checkbox" id="profitable"><label for="profitable" class="A"><div class="label">利益になる</div></label></td></tr>
+<tr><td><label for="cultivate"><div class="label">cultivate</div></label></td><td class="ans"><input type="checkbox" id="cultivate"><label for="cultivate" class="A"><div class="label">～を耕す</div></label></td></tr>
+<tr><td><label for="unfair"><div class="label">unfair</div></label></td><td class="ans"><input type="checkbox" id="unfair"><label for="unfair" class="A"><div class="label">不公平な</div></label></td></tr>
+<tr><td><label for="endure"><div class="label">endure</div></label></td><td class="ans"><input type="checkbox" id="endure"><label for="endure" class="A"><div class="label">～に耐える</div></label></td></tr>
+<tr><td><label for="hardship"><div class="label">hardship</div></label></td><td class="ans"><input type="checkbox" id="hardship"><label for="hardship" class="A"><div class="label">苦難</div></label></td></tr>
+<tr><td><label for="fraction"><div class="label">fraction</div></label></td><td class="ans"><input type="checkbox" id="fraction"><label for="fraction" class="A"><div class="label">一部</div></label></td></tr>
+<tr><td><label for="minimum"><div class="label">minimum</div></label></td><td class="ans"><input type="checkbox" id="minimum"><label for="minimum" class="A"><div class="label">最低の</div></label></td></tr>
+<tr><td><label for="overtime"><div class="label">overtime</div></label></td><td class="ans"><input type="checkbox" id="overtime"><label for="overtime" class="A"><div class="label">時間外に</div></label></td></tr>
+<tr><td><label for="justify"><div class="label">justify</div></label></td><td class="ans"><input type="checkbox" id="justify"><label for="justify" class="A"><div class="label">～を正当化する</div></label></td></tr>
+<tr><td><label for="grocery"><div class="label">grocery</div></label></td><td class="ans"><input type="checkbox" id="grocery"><label for="grocery" class="A"><div class="label">食料雑貨店</div></label></td></tr>
+<tr><td><label for="agriculture"><div class="label">agriculture</div></label></td><td class="ans"><input type="checkbox" id="agriculture"><label for="agriculture" class="A"><div class="label">農業</div></label></td></tr>
+<tr><td><label for="concept"><div class="label">concept</div></label></td><td class="ans"><input type="checkbox" id="concept"><label for="concept" class="A"><div class="label">概念</div></label></td></tr>
+<tr><td><label for="passionate"><div class="label">passionate</div></label></td><td class="ans"><input type="checkbox" id="passionate"><label for="passionate" class="A"><div class="label">情熱的な</div></label></td></tr>
+<tr><td><label for="generate"><div class="label">generate</div></label></td><td class="ans"><input type="checkbox" id="generate"><label for="generate" class="A"><div class="label">～を生み出す</div></label></td></tr>
+<tr><td><label for="qualify"><div class="label">qualify</div></label></td><td class="ans"><input type="checkbox" id="qualify"><label for="qualify" class="A"><div class="label">～に資格を与える</div></label></td></tr>
+<tr><td><label for="manufacturer"><div class="label">manufacturer</div></label></td><td class="ans"><input type="checkbox" id="manufacturer"><label for="manufacturer" class="A"><div class="label">製造業者</div></label></td></tr>
+<tr><td><label for="assurance"><div class="label">assurance</div></label></td><td class="ans"><input type="checkbox" id="assurance"><label for="assurance" class="A"><div class="label">自信</div></label></td></tr>
+<tr><td><label for="transparent"><div class="label">transparent</div></label></td><td class="ans"><input type="checkbox" id="transparent"><label for="transparent" class="A"><div class="label">透明な</div></label></td></tr>
+<tr><td><label for="corrupt"><div class="label">corrupt</div></label></td><td class="ans"><input type="checkbox" id="corrupt"><label for="corrupt" class="A"><div class="label">汚職の</div></label></td></tr>
+<tr><td><label for="inspect"><div class="label">inspect</div></label></td><td class="ans"><input type="checkbox" id="inspect"><label for="inspect" class="A"><div class="label">～を詳しく調べる</div></label></td></tr>
+<tr><td><label for="controversy"><div class="label">controversy</div></label></td><td class="ans"><input type="checkbox" id="controversy"><label for="controversy" class="A"><div class="label">論争</div></label></td></tr>
+<tr><td><label for="flee"><div class="label">flee</div></label></td><td class="ans"><input type="checkbox" id="flee"><label for="flee" class="A"><div class="label">～から逃げる</div></label></td></tr>
+<tr><td><label for="identification"><div class="label">identification</div></label></td><td class="ans"><input type="checkbox" id="identification"><label for="identification" class="A"><div class="label">身分証明書</div></label></td></tr>
+<tr><td><label for="accommodation"><div class="label">accommodation</div></label></td><td class="ans"><input type="checkbox" id="accommodation"><label for="accommodation" class="A"><div class="label">宿泊設備</div></label></td></tr>
+<tr><td><label for="initial"><div class="label">initial</div></label></td><td class="ans"><input type="checkbox" id="initial"><label for="initial" class="A"><div class="label">初めの</div></label></td></tr>
+<tr><td><label for="transition"><div class="label">transition</div></label></td><td class="ans"><input type="checkbox" id="transition"><label for="transition" class="A"><div class="label">移り変わり</div></label></td></tr>
+<tr><td><label for="priority"><div class="label">priority</div></label></td><td class="ans"><input type="checkbox" id="priority"><label for="priority" class="A"><div class="label">優先事項</div></label></td></tr>
+<tr><td><label for="hatred"><div class="label">hatred</div></label></td><td class="ans"><input type="checkbox" id="hatred"><label for="hatred" class="A"><div class="label">憎しみ</div></label></td></tr>
+<tr><td><label for="deprive"><div class="label">deprive</div></label></td><td class="ans"><input type="checkbox" id="deprive"><label for="deprive" class="A"><div class="label">～から奪う</div></label></td></tr>
+<tr><td><label for="instrumental"><div class="label">instrumental</div></label></td><td class="ans"><input type="checkbox" id="instrumental"><label for="instrumental" class="A"><div class="label">役立つ</div></label></td></tr>
+<tr><td><label for="construct"><div class="label">construct</div></label></td><td class="ans"><input type="checkbox" id="construct"><label for="construct" class="A"><div class="label">～を建設する</div></label></td></tr>
+<tr><td><label for="coordinate"><div class="label">coordinate</div></label></td><td class="ans"><input type="checkbox" id="coordinate"><label for="coordinate" class="A"><div class="label">～を調整する</div></label></td></tr>
+<tr><td><label for="distress"><div class="label">distress</div></label></td><td class="ans"><input type="checkbox" id="distress"><label for="distress" class="A"><div class="label">苦悩</div></label></td></tr>
+<tr><td><label for="emergency"><div class="label">emergency</div></label></td><td class="ans"><input type="checkbox" id="emergency"><label for="emergency" class="A"><div class="label">緊急</div></label></td></tr>
+<tr><td><label for="structural"><div class="label">structural</div></label></td><td class="ans"><input type="checkbox" id="structural"><label for="structural" class="A"><div class="label">構造の</div></label></td></tr>
+<tr><td><label for="collapse"><div class="label">collapse</div></label></td><td class="ans"><input type="checkbox" id="collapse"><label for="collapse" class="A"><div class="label">崩壊する</div></label></td></tr>
+<tr><td><label for="summon"><div class="label">summon</div></label></td><td class="ans"><input type="checkbox" id="summon"><label for="summon" class="A"><div class="label">～を呼び出す</div></label></td></tr>
+<tr><td><label for="urban"><div class="label">urban</div></label></td><td class="ans"><input type="checkbox" id="urban"><label for="urban" class="A"><div class="label">都市の</div></label></td></tr>
+<tr><td><label for="tackle"><div class="label">tackle</div></label></td><td class="ans"><input type="checkbox" id="tackle"><label for="tackle" class="A"><div class="label">～に取り組む</div></label></td></tr>
+<tr><td><label for="experienced"><div class="label">experienced</div></label></td><td class="ans"><input type="checkbox" id="experienced"><label for="experienced" class="A"><div class="label">経験豊かな</div></label></td></tr>
+<tr><td><label for="extend"><div class="label">extend</div></label></td><td class="ans"><input type="checkbox" id="extend"><label for="extend" class="A"><div class="label">～を引き伸ばす</div></label></td></tr>
+<tr><td><label for="counterpart"><div class="label">counterpart</div></label></td><td class="ans"><input type="checkbox" id="counterpart"><label for="counterpart" class="A"><div class="label">対応するもの</div></label></td></tr>
+<tr><td><label for="compensation"><div class="label">compensation</div></label></td><td class="ans"><input type="checkbox" id="compensation"><label for="compensation" class="A"><div class="label">賠償</div></label></td></tr>
+<tr><td><label for="priceless"><div class="label">priceless</div></label></td><td class="ans"><input type="checkbox" id="priceless"><label for="priceless" class="A"><div class="label">とても高価な</div></label></td></tr>
+<tr><td><label for="survival"><div class="label">survival</div></label></td><td class="ans"><input type="checkbox" id="survival"><label for="survival" class="A"><div class="label">生存</div></label></td></tr>
+<tr><td><label for="decade"><div class="label">decade</div></label></td><td class="ans"><input type="checkbox" id="decade"><label for="decade" class="A"><div class="label">10年間</div></label></td></tr>
+<tr><td><label for="gloomy"><div class="label">gloomy</div></label></td><td class="ans"><input type="checkbox" id="gloomy"><label for="gloomy" class="A"><div class="label">悲観的な</div></label></td></tr>
+<tr><td><label for="forecast"><div class="label">forecast</div></label></td><td class="ans"><input type="checkbox" id="forecast"><label for="forecast" class="A"><div class="label">予報</div></label></td></tr>
+<tr><td><label for="approximately"><div class="label">approximately</div></label></td><td class="ans"><input type="checkbox" id="approximately"><label for="approximately" class="A"><div class="label">おおよそ</div></label></td></tr>
+<tr><td><label for="anticipate"><div class="label">anticipate</div></label></td><td class="ans"><input type="checkbox" id="anticipate"><label for="anticipate" class="A"><div class="label">～を予想する</div></label></td></tr>
+<tr><td><label for="pension"><div class="label">pension</div></label></td><td class="ans"><input type="checkbox" id="pension"><label for="pension" class="A"><div class="label">年金</div></label></td></tr>
+<tr><td><label for="cope"><div class="label">cope</div></label></td><td class="ans"><input type="checkbox" id="cope"><label for="cope" class="A"><div class="label">うまく処理する</div></label></td></tr>
+<tr><td><label for="costly"><div class="label">costly</div></label></td><td class="ans"><input type="checkbox" id="costly"><label for="costly" class="A"><div class="label">高価な</div></label></td></tr>
+<tr><td><label for="significant"><div class="label">significant</div></label></td><td class="ans"><input type="checkbox" id="significant"><label for="significant" class="A"><div class="label">重大な</div></label></td></tr>
+<tr><td><label for="viewpoint"><div class="label">viewpoint</div></label></td><td class="ans"><input type="checkbox" id="viewpoint"><label for="viewpoint" class="A"><div class="label">見地</div></label></td></tr>
+<tr><td><label for="emerge"><div class="label">emerge</div></label></td><td class="ans"><input type="checkbox" id="emerge"><label for="emerge" class="A"><div class="label">現れる</div></label></td></tr>
+<tr><td><label for="unemployment"><div class="label">unemployment</div></label></td><td class="ans"><input type="checkbox" id="unemployment"><label for="unemployment" class="A"><div class="label">失業者数</div></label></td></tr>
+<tr><td><label for="highlight"><div class="label">highlight</div></label></td><td class="ans"><input type="checkbox" id="highlight"><label for="highlight" class="A"><div class="label">～を強調する</div></label></td></tr>
+<tr><td><label for="fundamental"><div class="label">fundamental</div></label></td><td class="ans"><input type="checkbox" id="fundamental"><label for="fundamental" class="A"><div class="label">基本的な</div></label></td></tr>
+<tr><td><label for="scare"><div class="label">scare</div></label></td><td class="ans"><input type="checkbox" id="scare"><label for="scare" class="A"><div class="label">～を怖がらせる</div></label></td></tr>
+<tr><td><label for="campaign"><div class="label">campaign</div></label></td><td class="ans"><input type="checkbox" id="campaign"><label for="campaign" class="A"><div class="label">運動</div></label></td></tr>
+<tr><td><label for="fossil"><div class="label">fossil</div></label></td><td class="ans"><input type="checkbox" id="fossil"><label for="fossil" class="A"><div class="label">化石</div></label></td></tr>
+<tr><td><label for="unlimited"><div class="label">unlimited</div></label></td><td class="ans"><input type="checkbox" id="unlimited"><label for="unlimited" class="A"><div class="label">無制限の</div></label></td></tr>
+<tr><td><label for="vanish"><div class="label">vanish</div></label></td><td class="ans"><input type="checkbox" id="vanish"><label for="vanish" class="A"><div class="label">消える</div></label></td></tr>
+<tr><td><label for="alternative"><div class="label">alternative</div></label></td><td class="ans"><input type="checkbox" id="alternative"><label for="alternative" class="A"><div class="label">代わりの</div></label></td></tr>
+<tr><td><label for="experimental"><div class="label">experimental</div></label></td><td class="ans"><input type="checkbox" id="experimental"><label for="experimental" class="A"><div class="label">実験の</div></label></td></tr>
+<tr><td><label for="abolish"><div class="label">abolish</div></label></td><td class="ans"><input type="checkbox" id="abolish"><label for="abolish" class="A"><div class="label">～を廃止する</div></label></td></tr>
+<tr><td><label for="innovation"><div class="label">innovation</div></label></td><td class="ans"><input type="checkbox" id="innovation"><label for="innovation" class="A"><div class="label">革新</div></label></td></tr>
+<tr><td><label for="revenue"><div class="label">revenue</div></label></td><td class="ans"><input type="checkbox" id="revenue"><label for="revenue" class="A"><div class="label">総利益</div></label></td></tr>
+<tr><td><label for="skilled"><div class="label">skilled</div></label></td><td class="ans"><input type="checkbox" id="skilled"><label for="skilled" class="A"><div class="label">熟練した</div></label></td></tr>
+<tr><td><label for="immigrant"><div class="label">immigrant</div></label></td><td class="ans"><input type="checkbox" id="immigrant"><label for="immigrant" class="A"><div class="label">移民</div></label></td></tr>
+<tr><td><label for="desperate"><div class="label">desperate</div></label></td><td class="ans"><input type="checkbox" id="desperate"><label for="desperate" class="A"><div class="label">向こう見ずな</div></label></td></tr>
+<tr><td><label for="boost"><div class="label">boost</div></label></td><td class="ans"><input type="checkbox" id="boost"><label for="boost" class="A"><div class="label">～を増強する</div></label></td></tr>
+<tr><td><label for="conservative"><div class="label">conservative</div></label></td><td class="ans"><input type="checkbox" id="conservative"><label for="conservative" class="A"><div class="label">保守的な</div></label></td></tr>
+<tr><td><label for="nationality"><div class="label">nationality</div></label></td><td class="ans"><input type="checkbox" id="nationality"><label for="nationality" class="A"><div class="label">国籍</div></label></td></tr>
+<tr><td><label for="productive"><div class="label">productive</div></label></td><td class="ans"><input type="checkbox" id="productive"><label for="productive" class="A"><div class="label">生産的な</div></label></td></tr>
+<tr><td><label for="fluent"><div class="label">fluent</div></label></td><td class="ans"><input type="checkbox" id="fluent"><label for="fluent" class="A"><div class="label">堪能な</div></label></td></tr>
+<tr><td><label for="partnership"><div class="label">partnership</div></label></td><td class="ans"><input type="checkbox" id="partnership"><label for="partnership" class="A"><div class="label">提携</div></label></td></tr>
+<tr><td><label for="discrimination"><div class="label">discrimination</div></label></td><td class="ans"><input type="checkbox" id="discrimination"><label for="discrimination" class="A"><div class="label">差別</div></label></td></tr>
+<tr><td><label for="dignity"><div class="label">dignity</div></label></td><td class="ans"><input type="checkbox" id="dignity"><label for="dignity" class="A"><div class="label">威厳</div></label></td></tr>
+<tr><td><label for="treatment"><div class="label">treatment</div></label></td><td class="ans"><input type="checkbox" id="treatment"><label for="treatment" class="A"><div class="label">治療</div></label></td></tr>
+<tr><td><label for="overwhelming"><div class="label">overwhelming</div></label></td><td class="ans"><input type="checkbox" id="overwhelming"><label for="overwhelming" class="A"><div class="label">圧倒的な</div></label></td></tr>
+<tr><td><label for="infant"><div class="label">infant</div></label></td><td class="ans"><input type="checkbox" id="infant"><label for="infant" class="A"><div class="label">幼児</div></label></td></tr>
+<tr><td><label for="paradox"><div class="label">paradox</div></label></td><td class="ans"><input type="checkbox" id="paradox"><label for="paradox" class="A"><div class="label">逆説</div></label></td></tr>
+<tr><td><label for="era"><div class="label">era</div></label></td><td class="ans"><input type="checkbox" id="era"><label for="era" class="A"><div class="label">時代</div></label></td></tr>
+<tr><td><label for="urge"><div class="label">urge</div></label></td><td class="ans"><input type="checkbox" id="urge"><label for="urge" class="A"><div class="label">～に強く迫る</div></label></td></tr>
+<tr><td><label for="aged"><div class="label">aged</div></label></td><td class="ans"><input type="checkbox" id="aged"><label for="aged" class="A"><div class="label">歳の</div></label></td></tr>
+<tr><td><label for="retirement"><div class="label">retirement</div></label></td><td class="ans"><input type="checkbox" id="retirement"><label for="retirement" class="A"><div class="label">退職</div></label></td></tr>
+<tr><td><label for="logical"><div class="label">logical</div></label></td><td class="ans"><input type="checkbox" id="logical"><label for="logical" class="A"><div class="label">論理的な</div></label></td></tr>
+<tr><td><label for="corporation"><div class="label">corporation</div></label></td><td class="ans"><input type="checkbox" id="corporation"><label for="corporation" class="A"><div class="label">企業</div></label></td></tr>
+<tr><td><label for="regulate"><div class="label">regulate</div></label></td><td class="ans"><input type="checkbox" id="regulate"><label for="regulate" class="A"><div class="label">～を規制する</div></label></td></tr>
+<tr><td><label for="reluctant"><div class="label">reluctant</div></label></td><td class="ans"><input type="checkbox" id="reluctant"><label for="reluctant" class="A"><div class="label">気が進まない</div></label></td></tr>
+<tr><td><label for="adequate"><div class="label">adequate</div></label></td><td class="ans"><input type="checkbox" id="adequate"><label for="adequate" class="A"><div class="label">十分な</div></label></td></tr>
+<tr><td><label for="ethnic"><div class="label">ethnic</div></label></td><td class="ans"><input type="checkbox" id="ethnic"><label for="ethnic" class="A"><div class="label">民族の</div></label></td></tr>
+<tr><td><label for="dominate"><div class="label">dominate</div></label></td><td class="ans"><input type="checkbox" id="dominate"><label for="dominate" class="A"><div class="label">～を支配する</div></label></td></tr>
+<tr><td><label for="heritage"><div class="label">heritage</div></label></td><td class="ans"><input type="checkbox" id="heritage"><label for="heritage" class="A"><div class="label">遺産</div></label></td></tr>
+<tr><td><label for="negotiate"><div class="label">negotiate</div></label></td><td class="ans"><input type="checkbox" id="negotiate"><label for="negotiate" class="A"><div class="label">交渉する</div></label></td></tr>
+<tr><td><label for="fertile"><div class="label">fertile</div></label></td><td class="ans"><input type="checkbox" id="fertile"><label for="fertile" class="A"><div class="label">肥えた</div></label></td></tr>
+<tr><td><label for="eliminate"><div class="label">eliminate</div></label></td><td class="ans"><input type="checkbox" id="eliminate"><label for="eliminate" class="A"><div class="label">～を取り除く</div></label></td></tr>
+<tr><td><label for="distinctive"><div class="label">distinctive</div></label></td><td class="ans"><input type="checkbox" id="distinctive"><label for="distinctive" class="A"><div class="label">特有の</div></label></td></tr>
+<tr><td><label for="prejudice"><div class="label">prejudice</div></label></td><td class="ans"><input type="checkbox" id="prejudice"><label for="prejudice" class="A"><div class="label">偏見</div></label></td></tr>
+<tr><td><label for="historic"><div class="label">historic</div></label></td><td class="ans"><input type="checkbox" id="historic"><label for="historic" class="A"><div class="label">歴史上重要な</div></label></td></tr>
+<tr><td><label for="distinct"><div class="label">distinct</div></label></td><td class="ans"><input type="checkbox" id="distinct"><label for="distinct" class="A"><div class="label">全く異なった</div></label></td></tr>
+<tr><td><label for="originate"><div class="label">originate</div></label></td><td class="ans"><input type="checkbox" id="originate"><label for="originate" class="A"><div class="label">由来する</div></label></td></tr>
+<tr><td><label for="revive"><div class="label">revive</div></label></td><td class="ans"><input type="checkbox" id="revive"><label for="revive" class="A"><div class="label">～を生き返らせる</div></label></td></tr>
+<tr><td><label for="treaty"><div class="label">treaty</div></label></td><td class="ans"><input type="checkbox" id="treaty"><label for="treaty" class="A"><div class="label">条約</div></label></td></tr>
+<tr><td><label for="declare"><div class="label">declare</div></label></td><td class="ans"><input type="checkbox" id="declare"><label for="declare" class="A"><div class="label">～を宣言する</div></label></td></tr>
+<tr><td><label for="dump"><div class="label">dump</div></label></td><td class="ans"><input type="checkbox" id="dump"><label for="dump" class="A"><div class="label">～をどさっと落とす</div></label></td></tr>
+<tr><td><label for="exploit"><div class="label">exploit</div></label></td><td class="ans"><input type="checkbox" id="exploit"><label for="exploit" class="A"><div class="label">～を搾取する</div></label></td></tr>
+<tr><td><label for="halt"><div class="label">halt</div></label></td><td class="ans"><input type="checkbox" id="halt"><label for="halt" class="A"><div class="label">停止する</div></label></td></tr>
+<tr><td><label for="territory"><div class="label">territory</div></label></td><td class="ans"><input type="checkbox" id="territory"><label for="territory" class="A"><div class="label">領土</div></label></td></tr>
+<tr><td><label for="multiple"><div class="label">multiple</div></label></td><td class="ans"><input type="checkbox" id="multiple"><label for="multiple" class="A"><div class="label">多数の</div></label></td></tr>
+<tr><td><label for="facility"><div class="label">facility</div></label></td><td class="ans"><input type="checkbox" id="facility"><label for="facility" class="A"><div class="label">施設</div></label></td></tr>
+<tr><td><label for="acknowledge"><div class="label">acknowledge</div></label></td><td class="ans"><input type="checkbox" id="acknowledge"><label for="acknowledge" class="A"><div class="label">～を認める</div></label></td></tr>
+<tr><td><label for="boundary"><div class="label">boundary</div></label></td><td class="ans"><input type="checkbox" id="boundary"><label for="boundary" class="A"><div class="label">境界線</div></label></td></tr>
+<tr><td><label for="extract"><div class="label">extract</div></label></td><td class="ans"><input type="checkbox" id="extract"><label for="extract" class="A"><div class="label">～を引き抜く</div></label></td></tr>
+<tr><td><label for="dispute"><div class="label">dispute</div></label></td><td class="ans"><input type="checkbox" id="dispute"><label for="dispute" class="A"><div class="label">論争</div></label></td></tr>
+<tr><td><label for="frontier"><div class="label">frontier</div></label></td><td class="ans"><input type="checkbox" id="frontier"><label for="frontier" class="A"><div class="label">辺境</div></label></td></tr>
+<tr><td><label for="exploration"><div class="label">exploration</div></label></td><td class="ans"><input type="checkbox" id="exploration"><label for="exploration" class="A"><div class="label">探査</div></label></td></tr>
+<tr><td><label for="abundant"><div class="label">abundant</div></label></td><td class="ans"><input type="checkbox" id="abundant"><label for="abundant" class="A"><div class="label">豊富な</div></label></td></tr>
+<tr><td><label for="commerce"><div class="label">commerce</div></label></td><td class="ans"><input type="checkbox" id="commerce"><label for="commerce" class="A"><div class="label">商業</div></label></td></tr>
+<tr><td><label for="pioneer"><div class="label">pioneer</div></label></td><td class="ans"><input type="checkbox" id="pioneer"><label for="pioneer" class="A"><div class="label">先駆者</div></label></td></tr>
+<tr><td><label for="realistic"><div class="label">realistic</div></label></td><td class="ans"><input type="checkbox" id="realistic"><label for="realistic" class="A"><div class="label">現実的な</div></label></td></tr>
+<tr><td><label for="ownership"><div class="label">ownership</div></label></td><td class="ans"><input type="checkbox" id="ownership"><label for="ownership" class="A"><div class="label">所有</div></label></td></tr>
+<tr><td><label for="humanity"><div class="label">humanity</div></label></td><td class="ans"><input type="checkbox" id="humanity"><label for="humanity" class="A"><div class="label">人道</div></label></td></tr>
+<tr><td><label for="prohibit"><div class="label">prohibit</div></label></td><td class="ans"><input type="checkbox" id="prohibit"><label for="prohibit" class="A"><div class="label">～を禁止する</div></label></td></tr>
+<tr><td><label for="implement"><div class="label">implement</div></label></td><td class="ans"><input type="checkbox" id="implement"><label for="implement" class="A"><div class="label">～を実行する</div></label></td></tr>
+<tr><td><label for="satellite"><div class="label">satellite</div></label></td><td class="ans"><input type="checkbox" id="satellite"><label for="satellite" class="A"><div class="label">人工衛星</div></label></td></tr>
+<tr><td><label for="solar"><div class="label">solar</div></label></td><td class="ans"><input type="checkbox" id="solar"><label for="solar" class="A"><div class="label">太陽の</div></label></td></tr>
+<tr><td><label for="misery"><div class="label">misery</div></label></td><td class="ans"><input type="checkbox" id="misery"><label for="misery" class="A"><div class="label">悲惨</div></label></td></tr>
+<tr><td><label for="consequence"><div class="label">consequence</div></label></td><td class="ans"><input type="checkbox" id="consequence"><label for="consequence" class="A"><div class="label">結果</div></label></td></tr>
+<tr><td><label for="orphan"><div class="label">orphan</div></label></td><td class="ans"><input type="checkbox" id="orphan"><label for="orphan" class="A"><div class="label">孤児</div></label></td></tr>
+<tr><td><label for="shatter"><div class="label">shatter</div></label></td><td class="ans"><input type="checkbox" id="shatter"><label for="shatter" class="A"><div class="label">～を粉々にする</div></label></td></tr>
+<tr><td><label for="devote"><div class="label">devote</div></label></td><td class="ans"><input type="checkbox" id="devote"><label for="devote" class="A"><div class="label">～をささげる</div></label></td></tr>
+<tr><td><label for="mission"><div class="label">mission</div></label></td><td class="ans"><input type="checkbox" id="mission"><label for="mission" class="A"><div class="label">使節団</div></label></td></tr>
+<tr><td><label for="refuge"><div class="label">refuge</div></label></td><td class="ans"><input type="checkbox" id="refuge"><label for="refuge" class="A"><div class="label">避難</div></label></td></tr>
+<tr><td><label for="nutrition"><div class="label">nutrition</div></label></td><td class="ans"><input type="checkbox" id="nutrition"><label for="nutrition" class="A"><div class="label">栄養補給</div></label></td></tr>
+<tr><td><label for="prosper"><div class="label">prosper</div></label></td><td class="ans"><input type="checkbox" id="prosper"><label for="prosper" class="A"><div class="label">栄える</div></label></td></tr>
+<tr><td><label for="publicity"><div class="label">publicity</div></label></td><td class="ans"><input type="checkbox" id="publicity"><label for="publicity" class="A"><div class="label">知れ渡ること</div></label></td></tr>
+<tr><td><label for="donation"><div class="label">donation</div></label></td><td class="ans"><input type="checkbox" id="donation"><label for="donation" class="A"><div class="label">寄付</div></label></td></tr>
+<tr><td><label for="applaud"><div class="label">applaud</div></label></td><td class="ans"><input type="checkbox" id="applaud"><label for="applaud" class="A"><div class="label">拍手を送る</div></label></td></tr>
+<tr><td><label for="distinguished"><div class="label">distinguished</div></label></td><td class="ans"><input type="checkbox" id="distinguished"><label for="distinguished" class="A"><div class="label">優れた</div></label></td></tr>
+<tr><td><label for="fame"><div class="label">fame</div></label></td><td class="ans"><input type="checkbox" id="fame"><label for="fame" class="A"><div class="label">名声</div></label></td></tr>
+<tr><td><label for="reputation"><div class="label">reputation</div></label></td><td class="ans"><input type="checkbox" id="reputation"><label for="reputation" class="A"><div class="label">評判</div></label></td></tr>
+<tr><td><label for="ambassador"><div class="label">ambassador</div></label></td><td class="ans"><input type="checkbox" id="ambassador"><label for="ambassador" class="A"><div class="label">大使</div></label></td></tr>
+<tr><td><label for="stimulate"><div class="label">stimulate</div></label></td><td class="ans"><input type="checkbox" id="stimulate"><label for="stimulate" class="A"><div class="label">～を刺激する</div></label></td></tr>
+<tr><td><label for="dedicate"><div class="label">dedicate</div></label></td><td class="ans"><input type="checkbox" id="dedicate"><label for="dedicate" class="A"><div class="label">～をささげる</div></label></td></tr>
+<tr><td><label for="regional"><div class="label">regional</div></label></td><td class="ans"><input type="checkbox" id="regional"><label for="regional" class="A"><div class="label">地方の</div></label></td></tr>
+<tr><td><label for="voluntary"><div class="label">voluntary</div></label></td><td class="ans"><input type="checkbox" id="voluntary"><label for="voluntary" class="A"><div class="label">自発的な</div></label></td></tr>
+<tr><td><label for="awareness"><div class="label">awareness</div></label></td><td class="ans"><input type="checkbox" id="awareness"><label for="awareness" class="A"><div class="label">認識</div></label></td></tr>
+<tr><td><label for="candidate"><div class="label">candidate</div></label></td><td class="ans"><input type="checkbox" id="candidate"><label for="candidate" class="A"><div class="label">立候補者</div></label></td></tr>
+<tr><td><label for="commitment"><div class="label">commitment</div></label></td><td class="ans"><input type="checkbox" id="commitment"><label for="commitment" class="A"><div class="label">誓約</div></label></td></tr>
+<tr><td><label for="considerably"><div class="label">considerably</div></label></td><td class="ans"><input type="checkbox" id="considerably"><label for="considerably" class="A"><div class="label">かなり</div></label></td></tr>
+<tr><td><label for="grief"><div class="label">grief</div></label></td><td class="ans"><input type="checkbox" id="grief"><label for="grief" class="A"><div class="label">深い悲しみ</div></label></td></tr>
+<tr><td><label for="deadly"><div class="label">deadly</div></label></td><td class="ans"><input type="checkbox" id="deadly"><label for="deadly" class="A"><div class="label">致命的な</div></label></td></tr>
+<tr><td><label for="personnel"><div class="label">personnel</div></label></td><td class="ans"><input type="checkbox" id="personnel"><label for="personnel" class="A"><div class="label">全職員</div></label></td></tr>
+<tr><td><label for="abandon"><div class="label">abandon</div></label></td><td class="ans"><input type="checkbox" id="abandon"><label for="abandon" class="A"><div class="label">～を見捨てる</div></label></td></tr>
+<tr><td><label for="inflict"><div class="label">inflict</div></label></td><td class="ans"><input type="checkbox" id="inflict"><label for="inflict" class="A"><div class="label">～を負わせる</div></label></td></tr>
+<tr><td><label for="resident"><div class="label">resident</div></label></td><td class="ans"><input type="checkbox" id="resident"><label for="resident" class="A"><div class="label">居住者</div></label></td></tr>
+<tr><td><label for="optimistic"><div class="label">optimistic</div></label></td><td class="ans"><input type="checkbox" id="optimistic"><label for="optimistic" class="A"><div class="label">楽観的な</div></label></td></tr>
+<tr><td><label for="forbid"><div class="label">forbid</div></label></td><td class="ans"><input type="checkbox" id="forbid"><label for="forbid" class="A"><div class="label">～を禁じる</div></label></td></tr>
+<tr><td><label for="storage"><div class="label">storage</div></label></td><td class="ans"><input type="checkbox" id="storage"><label for="storage" class="A"><div class="label">貯蔵</div></label></td></tr>
+<tr><td><label for="wicked"><div class="label">wicked</div></label></td><td class="ans"><input type="checkbox" id="wicked"><label for="wicked" class="A"><div class="label">悪い</div></label></td></tr>
+<tr><td><label for="negotiation"><div class="label">negotiation</div></label></td><td class="ans"><input type="checkbox" id="negotiation"><label for="negotiation" class="A"><div class="label">交渉</div></label></td></tr>
+<tr><td><label for="dialogue"><div class="label">dialogue</div></label></td><td class="ans"><input type="checkbox" id="dialogue"><label for="dialogue" class="A"><div class="label">対話</div></label></td></tr>
 </table>
+</body>
 </html>
