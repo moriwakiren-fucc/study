@@ -490,99 +490,100 @@ body {
 
 /* ════════════════════════════════
    縦書きモード
-   - テーブル全体に writing-mode: vertical-rl を適用
-     → 列が自動的に右→左へ並ぶ（日本語縦書きの慣習通り）
-   - セルの min-width ↔ min-height を入れ替え
-   - チェックボタン・ヘッダーテキスト等は horizontal-tb に戻す
+   方針:
+   - テーブル構造（table/tr/td）には writing-mode を当てない
+   - 列の順番逆転はJS側のDOM並び順で制御済み
+   - テキスト（.cell-text / th-content）だけ vertical-rl
+   - セルの width ↔ height を入れ替え
+   - .cell-inner は display:inline-block で文字サイズにフィット
+     → position:absolute のマスクがズレない
 ════════════════════════════════ */
-body.vertical-mode .table-scroll {
-  overflow-x: hidden;
-  overflow-y: auto;
+
+/* セル: 幅と高さを入れ替え */
+body.vertical-mode .study-table td {
+  min-width:  unset;
+  max-width:  unset;
+  min-height: unset;
+  width:      auto;
+  /* 縦書き方向のサイズ = 横書きの min-width 相当 */
+  min-width:  6em;
+}
+/* cell-inner: インラインブロックにしてテキストの実寸に合わせる */
+body.vertical-mode .cell-inner {
+  display: inline-block;
+  width:   auto;
+  min-width: 1.4em;
 }
 
-body.vertical-mode .study-table {
+/* テキストのみ縦書き */
+body.vertical-mode .cell-text {
   writing-mode: vertical-rl;
-  width: auto;      /* 横書き時の width:100% を解除 */
-  height: 100%;
+  white-space:  normal;
+  word-break:   normal;
+  min-height:   3em;
+  line-height:  1.8;
 }
 
-/* ヘッダー行 */
-body.vertical-mode .study-table thead th {
-  writing-mode: vertical-rl;
-  /* 縦書きなので height が「幅」になる */
-  height: 60px;
-  min-height: 60px;
-  width: auto;
-  white-space: nowrap;
-  padding: 0.8rem 0.5rem;
-  text-align: center;
-  /* sticky を top→left に切り替え */
-  position: sticky;
-  top: unset;
-  left: 0;
-}
-
-/* ヘッダー内のth-content */
+/* ヘッダーのテキストも縦書き */
 body.vertical-mode .th-content {
   writing-mode: vertical-rl;
   flex-direction: column;
+  white-space: nowrap;
 }
 body.vertical-mode .th-toggle-icon {
   transform: rotate(90deg);
+  display: inline-block;
 }
 
-/* データセル */
-body.vertical-mode .study-table td {
-  writing-mode: vertical-rl;
-  /* 縦書き: min-width→min-height、max-width→max-height */
-  min-width:  unset;
-  max-width:  unset;
-  min-height: 80px;
-  max-height: 260px;
-  width:      auto;
-  padding: 0.7rem 0.5rem;
-  vertical-align: top;
-  border-right: none;
-  border-bottom: 1px solid var(--border-light);
-}
-body.vertical-mode .study-table td:last-child {
-  border-bottom: none;
-}
-
-/* チェック列: 横書きに戻す */
+/* チェック列は横書きのまま */
 body.vertical-mode .td-check {
   writing-mode: horizontal-tb;
-  width:      auto;
-  min-height: 40px;
-  max-height: none;
-  padding: 0.4rem;
-  text-align: center;
-  vertical-align: middle;
 }
 body.vertical-mode .check-btn {
   writing-mode: horizontal-tb;
 }
 
-/* cell-inner */
-body.vertical-mode .cell-inner {
-  width: auto;
-  min-height: 80px;
-}
-
-/* cell-text: 縦書き */
-body.vertical-mode .cell-text {
+/* 縦書き+編集モード */
+body.vertical-mode .cell-edit-input {
   writing-mode: vertical-rl;
-  min-height: 4em;
-  min-width: unset;
-  word-break: normal;
-  white-space: normal;
+  min-height: 5em;
+  min-width:  unset;
+  width:      auto;
+  resize:     horizontal;
 }
 
-/* マスクも縦書き時は上下に伸びるよう調整 */
+/* マスク: pointer-events:none で常にcell-innerがイベントを受け取る */
+.cell-mask {
+  position: absolute;
+  inset: -2px -3px;
+  background: var(--mask-color);
+  border-radius: 4px;
+  pointer-events: none;
+  transform-origin: left center;
+  transition: transform 0.32s cubic-bezier(0.4,0,0.2,1),
+              opacity   0.32s cubic-bezier(0.4,0,0.2,1);
+  transform: scaleX(1) skewY(0deg);
+  opacity: 1;
+}
+
+/* めくれた状態（横書き） */
+.cell-inner[data-revealed="true"] .cell-mask {
+  transform: scaleX(0) skewY(-3deg);
+  opacity: 0;
+}
+
+/* 隠す方向へ戻る（横書き） */
+.cell-inner[data-revealed="false"] .cell-mask {
+  transform: scaleX(1) skewY(0deg);
+  opacity: 1;
+  transition: transform 0.25s cubic-bezier(0.2,0,0.4,1),
+              opacity   0.25s cubic-bezier(0.2,0,0.4,1);
+}
+
+/* 縦書き時: めくり方向を上→下（scaleY）に切り替え */
 body.vertical-mode .cell-mask {
-  inset: -3px -2px;
-  /* めくり方向を上→下に */
   transform-origin: center top;
+  transform: scaleY(1) skewX(0deg);
 }
 body.vertical-mode .cell-inner[data-revealed="true"] .cell-mask {
   transform: scaleY(0) skewX(-3deg);
@@ -593,45 +594,7 @@ body.vertical-mode .cell-inner[data-revealed="false"] .cell-mask {
   opacity: 1;
 }
 
-/* 縦書き+編集モード */
-body.vertical-mode .cell-edit-input {
-  writing-mode: vertical-rl;
-  min-height: 5em;
-  min-width:  unset;
-  width:      auto;
-  resize: horizontal;
-}
-
-/* マスク: pointer-events:none で常にcell-innerがイベントを受け取る */
-.cell-mask {
-  position: absolute;
-  inset: -2px -3px;
-  background: var(--mask-color);
-  border-radius: 4px;
-  pointer-events: none;   /* ← cell-innerにイベントを通す */
-  transform-origin: left center;
-  /* アニメーション制御はtransitionで行う */
-  transition: transform 0.32s cubic-bezier(0.4,0,0.2,1),
-              opacity   0.32s cubic-bezier(0.4,0,0.2,1);
-  transform: scaleX(1) skewY(0deg);
-  opacity: 1;
-}
-
-/* めくれた状態 */
-.cell-inner[data-revealed="true"] .cell-mask {
-  transform: scaleX(0) skewY(-3deg);
-  opacity: 0;
-}
-
-/* 隠す方向へ戻るアニメーション（少し違う曲線） */
-.cell-inner[data-revealed="false"] .cell-mask {
-  transform: scaleX(1) skewY(0deg);
-  opacity: 1;
-  transition: transform 0.25s cubic-bezier(0.2,0,0.4,1),
-              opacity   0.25s cubic-bezier(0.2,0,0.4,1);
-}
-
-/* ホバー時にわずかに暗く（マスクが見えているとき） */
+/* ホバー時にわずかに暗く */
 .cell-inner:hover .cell-mask {
   background: #9a8878;
 }
