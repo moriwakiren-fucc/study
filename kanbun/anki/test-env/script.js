@@ -111,7 +111,7 @@ function parseCSV(text) {
 /* ══════════════════════════════════════
    CSV シリアライザー（ダウンロード用）
 ══════════════════════════════════════ */
-function serializeCSV(unitName, headers, rows) {
+function serializeCSV(headers, rows) {
   const escCell = v => {
     const s = String(v ?? '');
     return (s.includes(',') || s.includes('"') || s.includes('\n'))
@@ -119,8 +119,7 @@ function serializeCSV(unitName, headers, rows) {
       : s;
   };
   const lines = [];
-  lines.push(escCell(unitName));                    // A1: 単元名
-  lines.push(headers.map(escCell).join(','));        // 見出し行
+  lines.push(headers.map(escCell).join(','));        // 行0: 見出し
   rows.forEach(row => lines.push(row.map(escCell).join(',')));
   return lines.join('\r\n');
 }
@@ -217,23 +216,20 @@ async function loadUnitByValue(value) {
 
 function parseCsvIntoState(csvText, unitKey) {
   const allRows = parseCSV(csvText);
-  if (allRows.length < 2) {
+  if (allRows.length < 1) {
     showError('データが不足しています（見出し行が必要です）。');
     return;
   }
   AppState.currentUnit = unitKey;
-  // 行0: 単元名（A1）
-  // 行1: 見出し
-  // 行2〜: データ
-  AppState.headers = allRows[1];
-  AppState.rows = allRows.slice(2).map(r => {
-    // 列数をheadersに揃える
+  // 行0: 見出し
+  // 行1〜: データ
+  AppState.headers = allRows[0];
+  AppState.rows = allRows.slice(1).map(r => {
     const padded = [...r];
     while (padded.length < AppState.headers.length) padded.push('');
     return padded;
   });
   AppState.colRevealed = {};
-  // 編集履歴リセット
   AppState.editHistory = [];
   AppState.editHistoryCursor = -1;
 }
@@ -248,11 +244,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     for (const file of files) {
       const csvText = await file.text();
-      const allRows = parseCSV(csvText);
-      // A1セルを単元名として使用、なければファイル名
-      const name = (allRows[0] && allRows[0][0] && allRows[0][0].trim())
-        ? allRows[0][0].trim()
-        : file.name.replace(/\.csv$/i, '');
+      // 新フォーマット: A1は見出しなので単元名はファイル名から取る
+      const name = file.name.replace(/\.csv$/i, '');
 
       // 同名が既にあれば上書き
       const existing = AppState.uploadedUnits.findIndex(u => u.name === name);
@@ -607,7 +600,7 @@ function downloadCSV() {
     return found?.name ?? '編集済み';
   })();
 
-  const csvStr  = serializeCSV(unitName, AppState.headers, AppState.rows);
+  const csvStr  = serializeCSV(AppState.headers, AppState.rows);
   const blob    = new Blob(['\uFEFF' + csvStr], { type: 'text/csv;charset=utf-8;' });
   const url     = URL.createObjectURL(blob);
   const a       = document.createElement('a');

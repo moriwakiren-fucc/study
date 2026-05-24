@@ -491,48 +491,49 @@ body {
 /* ════════════════════════════════
    縦書きモード
    方針:
-   ・テーブル構造（table/tr/td）には writing-mode を当てない
+   ・テーブル構造（table/tr）には writing-mode を当てない
+   ・データ td・cell-inner・cell-text まとめて vertical-rl
+     → td が縦書き座標系になり、テキスト量に応じて自然に縦伸び
+     → position:absolute のマスクも同座標系でピッタリ合う
+   ・チェック td だけ horizontal-tb に戻す
    ・列の順番逆転はJS側のDOM並び順で制御
-   ・.cell-inner ごと writing-mode:vertical-rl にする
-     → position:absolute のマスクも同じ座標系になりズレない
-   ・td の width が縦書きでの「列の高さ」になる
 ════════════════════════════════ */
 
-/* td: 横方向の min-width を解除、縦書きでの幅（＝高さ）を width で指定 */
-body.vertical-mode .study-table td {
+/* データセル td を縦書きに */
+body.vertical-mode .study-table td:not(.td-check) {
+  writing-mode: vertical-rl;
   min-width:    unset;
   max-width:    unset;
   width:        auto;
   vertical-align: top;
+  padding:      0.7rem 0.5rem;
 }
 
-/* cell-inner: writing-mode を vertical-rl に。
-   これにより内包する cell-text・cell-mask が全て縦書き座標系になる */
+/* cell-inner: td と同じ座標系。block で td 幅いっぱいに広がる */
 body.vertical-mode .cell-inner {
   writing-mode: vertical-rl;
-  display:      inline-block;  /* 縦書きコンテンツの実寸に合わせる */
-  width:        auto;
-  min-width:    unset;
+  display:      block;
+  width:        100%;
   min-height:   unset;
 }
 
-/* cell-text: writing-mode は cell-inner から継承される。
-   縦書きでは "height" 方向がテキストの流れ方向になるので
-   min-height で最低限の長さを確保する */
+/* cell-text: 縦書き座標系で自然にテキスト量分だけ伸びる */
 body.vertical-mode .cell-text {
-  writing-mode: vertical-rl;   /* 明示（継承の念押し） */
+  writing-mode: vertical-rl;
   white-space:  normal;
   word-break:   normal;
-  min-height:   4em;           /* 縦方向の最低長さ */
   line-height:  1.8;
+  display:      block;
+  width:        100%;
 }
 
-/* cell-mask: cell-inner が vertical-rl になったので
-   inset: 0 で完全に cell-inner を覆える */
+/* cell-mask: td・cell-inner が縦書き座標系なので inset:0 で完全一致 */
 body.vertical-mode .cell-mask {
   inset:            0;
   transform-origin: center top;
   transform:        scaleY(1) skewX(0deg);
+  transition:       transform 0.32s cubic-bezier(0.4,0,0.2,1),
+                    opacity   0.32s cubic-bezier(0.4,0,0.2,1);
 }
 body.vertical-mode .cell-inner[data-revealed="true"] .cell-mask {
   transform: scaleY(0) skewX(-3deg);
@@ -545,7 +546,12 @@ body.vertical-mode .cell-inner[data-revealed="false"] .cell-mask {
               opacity   0.25s cubic-bezier(0.2,0,0.4,1);
 }
 
-/* ヘッダーのテキストも縦書き */
+/* ヘッダー th も縦書き（チェック列以外） */
+body.vertical-mode .study-table thead th:not(.col-check) {
+  writing-mode: vertical-rl;
+  white-space:  nowrap;
+  padding:      0.8rem 0.5rem;
+}
 body.vertical-mode .th-content {
   writing-mode:   vertical-rl;
   flex-direction: column;
@@ -557,7 +563,8 @@ body.vertical-mode .th-toggle-icon {
 }
 
 /* チェック列は横書きのまま */
-body.vertical-mode .td-check {
+body.vertical-mode .td-check,
+body.vertical-mode .col-check {
   writing-mode: horizontal-tb;
 }
 body.vertical-mode .check-btn {
@@ -567,8 +574,7 @@ body.vertical-mode .check-btn {
 /* 縦書き+編集モード */
 body.vertical-mode .cell-edit-input {
   writing-mode: vertical-rl;
-  min-height:   5em;
-  width:        auto;
+  width:        100%;
   min-width:    unset;
   resize:       horizontal;
 }
