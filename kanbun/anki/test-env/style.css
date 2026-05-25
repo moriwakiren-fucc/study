@@ -505,6 +505,7 @@ body.vertical-mode .study-table td:not(.td-check) {
   min-width:    unset;
   max-width:    unset;
   width:        auto;
+  max-height:   300px;
   vertical-align: top;
   padding:      0.7rem 0.5rem;
 }
