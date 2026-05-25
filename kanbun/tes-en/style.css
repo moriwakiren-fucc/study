@@ -1,0 +1,11 @@
+sup {
+  color:#f00;
+  position: relative;
+  left: 0.25em;
+  margin-top:-1em;
+}
+
+sub {
+  position: relative;
+  right: 0.25em;
+}
