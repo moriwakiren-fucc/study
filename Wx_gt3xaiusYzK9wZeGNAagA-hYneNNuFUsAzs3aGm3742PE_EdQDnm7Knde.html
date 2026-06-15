@@ -1,57 +1,28 @@
-<a href="9UHTn37KWbhWNEg3XxutMHmUApbyeAYL6Ba_2rX9TLBVp2RVKSNXesyFu7cM.pdf" download="3年5組用_席替えメーカー_0612.pdf" class="download-btn" onclick="forceDownload(event, this)">
-  座席表をダウンロード
-</a>
-<style>
-  .download-btn {
-  display: inline-block;
-  padding: 10px 20px;
-  background-color: #007bff; /* ボタンの背景色（青） */
-  color: #ffffff;            /* 文字の色（白） */
-  text-decoration: none;     /* リンクの下線を消す */
-  border-radius: 5px;        /* 角を丸くする */
-  font-weight: bold;
-  transition: background-color 0.3s;
-}
-
-/* マウスホバー時のエフェクト */
-.download-btn:hover {
-  background-color: #0056b3; /* 濃い青色に変化 */
-}
-</style>
-<script>
-function forceDownload(event, element) {
-  // 通常のリンク遷移をキャンセル
-  event.preventDefault();
-  
-  const fileUrl = element.href;
-  const fileName = element.download || 'download';
-
-  // ファイルを非同期で取得してBlobに変換
-  fetch(fileUrl)
-    .then(response => {
-      if (!response.ok) throw new Error('ネットワークエラー');
-      return response.blob();
-    })
-    .then(blob => {
-      // Blobから一時的なURLを作成
-      const blobUrl = window.URL.createObjectURL(blob);
-      
-      // 見えないリンクを一時的に作ってクリック
-      const tempLink = document.createElement('a');
-      tempLink.href = blobUrl;
-      tempLink.download = fileName;
-      document.body.appendChild(tempLink);
-      tempLink.click();
-      
-      // 後片付け
-      document.body.removeChild(tempLink);
-      window.URL.revokeObjectURL(blobUrl);
-    })
-    .catch(error => {
-      console.error('ダウンロードに失敗しました:', error);
-      // エラー時は通常のリンクとして開く
-      window.location.href = fileUrl;
-    });
-}
-
-</script>
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <title>URLを開く</title>
+    <script>
+        function openUrl() {
+            // 入力欄の値を取得
+            const inputUrl = document.getElementById('urlInput').value;
+            const url = 'https://moriwakiren-fucc.github.io/study/' + inputUrl + '.pdf'
+            // 入力が空でないかチェック
+            if (url) {
+                // 別タブでURLを開く
+                window.open(url, '_blank');
+            } else {
+                alert('URLを入力してください。');
+            }
+        }
+    </script>
+</head>
+<body>
+    <form onsubmit="event.preventDefault(); openUrl();">
+        <label for="urlInput">URL:</label>
+        <input type="url" id="urlInput" placeholder="パスワードを入力" required>
+        <button type="submit">開く</button>
+    </form>
+</body>
+</html>
