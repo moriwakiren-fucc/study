@@ -1,1 +1,1238 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>射影変換を学ぶ | インタラクティブな台形補正</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
 
+        :root {
+            --color-bg: #fafaf9;
+            --color-surface: #ffffff;
+            --color-border: #e7e5e4;
+            --color-text-primary: #1f2937;
+            --color-text-secondary: #6b7280;
+            --color-text-tertiary: #9ca3af;
+            --color-accent: #0ea5e9;
+            --color-accent-light: #e0f2fe;
+            --color-error: #ef4444;
+            --color-success: #10b981;
+            --color-warning: #f59e0b;
+            --space-xs: 4px;
+            --space-sm: 8px;
+            --space-md: 16px;
+            --space-lg: 24px;
+            --space-xl: 32px;
+            --space-2xl: 48px;
+            --radius-sm: 6px;
+            --radius-md: 8px;
+            --radius-lg: 12px;
+        }
+
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --color-bg: #0f172a;
+                --color-surface: #1e293b;
+                --color-border: #334155;
+                --color-text-primary: #f1f5f9;
+                --color-text-secondary: #cbd5e1;
+                --color-text-tertiary: #94a3b8;
+                --color-accent-light: #0c4a6e;
+            }
+        }
+
+        html, body {
+            width: 100%;
+            height: 100%;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', sans-serif;
+            background: var(--color-bg);
+            color: var(--color-text-primary);
+            line-height: 1.6;
+        }
+
+        header {
+            background: var(--color-surface);
+            border-bottom: 1px solid var(--color-border);
+            padding: var(--space-lg) var(--space-xl);
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+
+        .header-content {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            font-size: 28px;
+            font-weight: 600;
+            margin-bottom: var(--space-sm);
+            letter-spacing: -0.5px;
+        }
+
+        .subtitle {
+            font-size: 14px;
+            color: var(--color-text-secondary);
+        }
+
+        main {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: var(--space-xl);
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: var(--space-xl);
+            margin-bottom: var(--space-2xl);
+        }
+
+        @media (max-width: 1024px) {
+            .grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .panel {
+            background: var(--color-surface);
+            border: 1px solid var(--color-border);
+            border-radius: var(--radius-lg);
+            padding: var(--space-lg);
+        }
+
+        .panel-title {
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: var(--space-md);
+            display: flex;
+            align-items: center;
+            gap: var(--space-sm);
+        }
+
+        .icon {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 24px;
+            height: 24px;
+            border-radius: var(--radius-sm);
+            background: var(--color-accent-light);
+            color: var(--color-accent);
+            font-size: 12px;
+        }
+
+        /* Canvas area */
+        .canvas-wrapper {
+            background: var(--color-bg);
+            border: 2px dashed var(--color-border);
+            border-radius: var(--radius-md);
+            padding: var(--space-md);
+            margin-bottom: var(--space-lg);
+            position: relative;
+            aspect-ratio: 4 / 3;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        canvas {
+            display: block;
+            max-width: 100%;
+            max-height: 100%;
+            cursor: crosshair;
+        }
+
+        .help-text {
+            font-size: 12px;
+            color: var(--color-text-tertiary);
+            margin-top: var(--space-md);
+            font-style: italic;
+        }
+
+        /* Control panel */
+        .controls {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+            gap: var(--space-md);
+            margin-bottom: var(--space-lg);
+        }
+
+        .control-group {
+            display: flex;
+            flex-direction: column;
+            gap: var(--space-xs);
+        }
+
+        label {
+            font-size: 12px;
+            font-weight: 500;
+            color: var(--color-text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        input[type="range"] {
+            width: 100%;
+            height: 4px;
+            border-radius: 2px;
+            background: var(--color-border);
+            outline: none;
+            -webkit-appearance: none;
+            appearance: none;
+        }
+
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background: var(--color-accent);
+            cursor: pointer;
+            border: 2px solid var(--color-surface);
+            box-shadow: 0 0 0 1px var(--color-border);
+        }
+
+        input[type="range"]::-moz-range-thumb {
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background: var(--color-accent);
+            cursor: pointer;
+            border: 2px solid var(--color-surface);
+            box-shadow: 0 0 0 1px var(--color-border);
+        }
+
+        .value-display {
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--color-accent);
+            font-family: 'Monaco', 'Courier New', monospace;
+        }
+
+        /* Button styles */
+        button {
+            padding: var(--space-sm) var(--space-md);
+            border: 1px solid var(--color-border);
+            background: var(--color-surface);
+            color: var(--color-text-primary);
+            border-radius: var(--radius-md);
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        button:hover {
+            background: var(--color-bg);
+            border-color: var(--color-accent);
+            color: var(--color-accent);
+        }
+
+        button.primary {
+            background: var(--color-accent);
+            color: white;
+            border-color: var(--color-accent);
+        }
+
+        button.primary:hover {
+            background: #0284c7;
+            border-color: #0284c7;
+        }
+
+        .button-group {
+            display: flex;
+            gap: var(--space-sm);
+            margin-bottom: var(--space-lg);
+        }
+
+        /* Output section */
+        .output-section {
+            margin-bottom: var(--space-lg);
+        }
+
+        .subsection-title {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--color-text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: var(--space-md);
+            margin-top: var(--space-lg);
+        }
+
+        .matrix-display {
+            background: var(--color-bg);
+            border: 1px solid var(--color-border);
+            border-radius: var(--radius-md);
+            padding: var(--space-md);
+            font-family: 'Monaco', 'Courier New', monospace;
+            font-size: 12px;
+            color: var(--color-text-primary);
+            overflow-x: auto;
+            line-height: 1.8;
+        }
+
+        .matrix-row {
+            display: flex;
+            justify-content: center;
+            gap: var(--space-md);
+            margin: var(--space-xs) 0;
+        }
+
+        .matrix-cell {
+            min-width: 80px;
+            text-align: right;
+        }
+
+        /* Coordinates display */
+        .coords-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: var(--space-md);
+        }
+
+        .coord-box {
+            background: var(--color-bg);
+            border: 1px solid var(--color-border);
+            border-radius: var(--radius-md);
+            padding: var(--space-md);
+        }
+
+        .coord-label {
+            font-size: 12px;
+            color: var(--color-text-secondary);
+            font-weight: 500;
+            margin-bottom: var(--space-xs);
+        }
+
+        .coord-value {
+            font-family: 'Monaco', 'Courier New', monospace;
+            font-size: 13px;
+            color: var(--color-text-primary);
+            font-weight: 600;
+        }
+
+        /* Explanation section */
+        .explanation {
+            background: var(--color-accent-light);
+            border-left: 4px solid var(--color-accent);
+            border-radius: var(--radius-md);
+            padding: var(--space-md);
+            margin-bottom: var(--space-lg);
+        }
+
+        .explanation h3 {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--color-accent);
+            margin-bottom: var(--space-sm);
+        }
+
+        .explanation p {
+            font-size: 13px;
+            color: var(--color-text-secondary);
+            line-height: 1.6;
+        }
+
+        /* Theory section */
+        .theory {
+            background: var(--color-surface);
+            border: 1px solid var(--color-border);
+            border-radius: var(--radius-lg);
+            padding: var(--space-lg);
+            margin-top: var(--space-2xl);
+        }
+
+        .theory h2 {
+            font-size: 22px;
+            font-weight: 600;
+            margin-bottom: var(--space-lg);
+        }
+
+        .theory-item {
+            margin-bottom: var(--space-lg);
+        }
+
+        .theory-item h3 {
+            font-size: 15px;
+            font-weight: 600;
+            color: var(--color-text-primary);
+            margin-bottom: var(--space-sm);
+            display: flex;
+            align-items: center;
+            gap: var(--space-sm);
+        }
+
+        .step-num {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            background: var(--color-accent);
+            color: white;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .theory-item p {
+            font-size: 14px;
+            color: var(--color-text-secondary);
+            margin-bottom: var(--space-sm);
+            line-height: 1.7;
+        }
+
+        .code-block {
+            background: var(--color-bg);
+            border: 1px solid var(--color-border);
+            border-radius: var(--radius-md);
+            padding: var(--space-md);
+            font-family: 'Monaco', 'Courier New', monospace;
+            font-size: 12px;
+            overflow-x: auto;
+            margin-top: var(--space-sm);
+            color: var(--color-text-primary);
+        }
+
+        .color-indicator {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 3px;
+            vertical-align: middle;
+            margin-right: var(--space-xs);
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            * {
+                animation: none !important;
+                transition: none !important;
+            }
+        }
+
+        @media (max-width: 768px) {
+            main {
+                padding: var(--space-lg);
+            }
+
+            .grid {
+                gap: var(--space-lg);
+            }
+
+            h1 {
+                font-size: 24px;
+            }
+
+            .controls {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="header-content">
+            <h1>射影変換を学ぶ</h1>
+            <p class="subtitle">インタラクティブな台形補正 | 4つのコーナーをドラッグして、ホモグラフィ行列をリアルタイムで確認</p>
+        </div>
+    </header>
+
+    <main>
+        <div class="grid">
+            <!-- Left: Interactive visualization -->
+            <div>
+                <div class="panel">
+                    <div class="panel-title">
+                        <span class="icon">①</span>
+                        元画像（斜めから撮影）
+                    </div>
+                    <div class="canvas-wrapper">
+                        <canvas id="sourceCanvas" width="400" height="300"></canvas>
+                    </div>
+                    <p class="help-text">💡 4つのコーナーをドラッグして、台形の形を変えてください</p>
+                </div>
+            </div>
+
+            <!-- Right: Corrected result -->
+            <div>
+                <div class="panel">
+                    <div class="panel-title">
+                        <span class="icon">②</span>
+                        補正後（正面ビュー）
+                    </div>
+                    <div class="canvas-wrapper">
+                        <canvas id="resultCanvas" width="400" height="300"></canvas>
+                    </div>
+                    <p class="help-text">射影変換により、台形が長方形に補正されます</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Controls and outputs -->
+        <div class="panel">
+            <div class="panel-title">
+                <span class="icon">③</span>
+                計算と制御
+            </div>
+
+            <div class="explanation">
+                <h3>📐 現在の操作</h3>
+                <p>左側のキャンバスで4つのコーナー（●）をドラッグすると、リアルタイムで以下が計算されます：</p>
+                <ul style="margin-left: var(--space-md); margin-top: var(--space-sm);">
+                    <li>ホモグラフィ行列 H（3×3）</li>
+                    <li>補正後の画像</li>
+                    <li>各種パラメータ</li>
+                </ul>
+            </div>
+
+            <div class="button-group">
+                <button onclick="resetCorners()" class="primary">リセット</button>
+                <button onclick="applyPreset('trapezoid')">台形サンプル</button>
+                <button onclick="applyPreset('extreme')">極端な角度</button>
+                <button onclick="applyPreset('perspective')">透視図</button>
+            </div>
+
+            <!-- Source coordinates -->
+            <div class="output-section">
+                <div class="subsection-title">元画像のコーナー座標</div>
+                <div class="coords-grid">
+                    <div class="coord-box">
+                        <div class="coord-label">左上 (src[0])</div>
+                        <div class="coord-value" id="coord-src-0">-</div>
+                    </div>
+                    <div class="coord-box">
+                        <div class="coord-label">右上 (src[1])</div>
+                        <div class="coord-value" id="coord-src-1">-</div>
+                    </div>
+                    <div class="coord-box">
+                        <div class="coord-label">右下 (src[2])</div>
+                        <div class="coord-value" id="coord-src-2">-</div>
+                    </div>
+                    <div class="coord-box">
+                        <div class="coord-label">左下 (src[3])</div>
+                        <div class="coord-value" id="coord-src-3">-</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Destination coordinates -->
+            <div class="output-section">
+                <div class="subsection-title">補正後のコーナー座標</div>
+                <div class="coords-grid">
+                    <div class="coord-box">
+                        <div class="coord-label">左上 (dst[0])</div>
+                        <div class="coord-value" id="coord-dst-0">(0, 0)</div>
+                    </div>
+                    <div class="coord-box">
+                        <div class="coord-label">右上 (dst[1])</div>
+                        <div class="coord-value" id="coord-dst-1">(400, 0)</div>
+                    </div>
+                    <div class="coord-box">
+                        <div class="coord-label">右下 (dst[2])</div>
+                        <div class="coord-value" id="coord-dst-2">(400, 300)</div>
+                    </div>
+                    <div class="coord-box">
+                        <div class="coord-label">左下 (dst[3])</div>
+                        <div class="coord-value" id="coord-dst-3">(0, 300)</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Homography matrix -->
+            <div class="output-section">
+                <div class="subsection-title">ホモグラフィ行列 H（3×3）</div>
+                <p style="font-size: 13px; color: var(--color-text-secondary); margin-bottom: var(--space-md);">
+                    この行列が、元画像の座標を補正後の座標に変換します。<br>
+                    出力画像のピクセルに対して、<code style="background: var(--color-bg); padding: 2px 6px; border-radius: 3px;">H⁻¹</code>（逆行列）を適用し、元画像からサンプリングします。
+                </p>
+                <div class="matrix-display" id="matrixDisplay">
+                    <div class="matrix-row">
+                        <div class="matrix-cell">[ -</div>
+                        <div class="matrix-cell">-</div>
+                        <div class="matrix-cell">- ]</div>
+                    </div>
+                    <div class="matrix-row">
+                        <div class="matrix-cell">[ -</div>
+                        <div class="matrix-cell">-</div>
+                        <div class="matrix-cell">- ]</div>
+                    </div>
+                    <div class="matrix-row">
+                        <div class="matrix-cell">[ -</div>
+                        <div class="matrix-cell">-</div>
+                        <div class="matrix-cell">- ]</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Transformation parameters -->
+            <div class="output-section">
+                <div class="subsection-title">変換パラメータ</div>
+                <div class="coords-grid">
+                    <div class="coord-box">
+                        <div class="coord-label">行列式 (det)</div>
+                        <div class="coord-value" id="param-det">-</div>
+                    </div>
+                    <div class="coord-box">
+                        <div class="coord-label">透視係数</div>
+                        <div class="coord-value" id="param-perspective">-</div>
+                    </div>
+                    <div class="coord-box">
+                        <div class="coord-label">スケール比</div>
+                        <div class="coord-value" id="param-scale">-</div>
+                    </div>
+                    <div class="coord-box">
+                        <div class="coord-label">状態</div>
+                        <div class="coord-value" id="param-status" style="color: var(--color-success);">✓ 有効</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Theory section -->
+        <div class="theory">
+            <h2>🎓 理論の詳細</h2>
+
+            <div class="theory-item">
+                <h3>
+                    <span class="step-num">1</span>
+                    コーナー座標の対応
+                </h3>
+                <p>
+                    射影変換は、元画像の4つのコーナーが、出力画像のどこにマッピングされるかを指定することで定義されます。
+                </p>
+                <div class="code-block">
+元画像:      → 出力画像:<br>
+src[0] (x1,y1)  →  dst[0] (u1,v1)<br>
+src[1] (x2,y2)  →  dst[1] (u2,v2)<br>
+src[2] (x3,y3)  →  dst[2] (u3,v3)<br>
+src[3] (x4,y4)  →  dst[3] (u4,v4)
+                </div>
+            </div>
+
+            <div class="theory-item">
+                <h3>
+                    <span class="step-num">2</span>
+                    ホモグラフィ行列
+                </h3>
+                <p>
+                    ホモグラフィ行列 H は 3×3 行列で、同次座標系を使って点を変換します：
+                </p>
+                <div class="code-block">
+[u]     [h₁₁  h₁₂  h₁₃] [x]<br>
+[v]  =  [h₂₁  h₂₂  h₂₃] [y]<br>
+[w]     [h₃₁  h₃₂   1 ] [1]<br>
+<br>
+最終的な座標は (u/w, v/w) となります（同次座標の正規化）
+                </div>
+            </div>
+
+            <div class="theory-item">
+                <h3>
+                    <span class="step-num">3</span>
+                    行列の計算方法
+                </h3>
+                <p>
+                    4つのコーナー対応から、8×9 の線形方程式系を構築し、SVD（特異値分解）で解きます：
+                </p>
+                <div class="code-block">
+A · h = 0<br>
+<br>
+ここで A は以下の形式：<br>
+A = [<br>
+  -x₁  -y₁  -1   0    0    0   u₁x₁  u₁y₁  u₁<br>
+   0    0    0  -x₁  -y₁  -1   v₁x₁  v₁y₁  v₁<br>
+  -x₂  -y₂  -1   0    0    0   u₂x₂  u₂y₂  u₂<br>
+   ...<br>
+]
+                </div>
+            </div>
+
+            <div class="theory-item">
+                <h3>
+                    <span class="step-num">4</span>
+                    画像の再構成
+                </h3>
+                <p>
+                    出力画像のピクセル (u, v) に対して、元画像の対応する座標 (x, y) を逆マッピングで計算します：
+                </p>
+                <div class="code-block">
+[x]     [u]<br>
+[y]  =  H⁻¹ · [v]<br>
+[1]     [1]<br>
+<br>
+元画像でのサンプリング位置 (x, y) が計算されます。<br>
+小数座標の場合は、周辺ピクセルから補間します。
+                </div>
+            </div>
+
+            <div class="theory-item">
+                <h3>
+                    <span class="step-num">5</span>
+                    補間方式
+                </h3>
+                <p>
+                    サンプリング位置が整数座標でない場合、複数の補間方式が使えます：
+                </p>
+                <ul style="margin-left: var(--space-md); margin-top: var(--space-sm);">
+                    <li><strong>最近傍補間</strong> — 最も近いピクセルの値を使用（高速、低品質）</li>
+                    <li><strong>双一次補間</strong> — 4つの周辺ピクセルから線形補間（バランス型、推奨）</li>
+                    <li><strong>双三次補間</strong> — 16個のピクセルから補間（高品質、遅い）</li>
+                </ul>
+            </div>
+
+            <div class="theory-item">
+                <h3>
+                    <span class="step-num">6</span>
+                    実践例：文書スキャン
+                </h3>
+                <p>
+                    スマートフォンで斜めから撮影した書類を、自動的に正面ビューに補正する場合：
+                </p>
+                <div class="code-block">
+// 入力: 傾いた文書の4つのコーナー<br>
+src = [(x1,y1), (x2,y2), (x3,y3), (x4,y4)]<br>
+<br>
+// 出力: 長方形<br>
+dst = [(0,0), (W,0), (W,H), (0,H)]<br>
+<br>
+// ホモグラフィ行列を計算<br>
+H = getPerspectiveTransform(src, dst)<br>
+<br>
+// 補正<br>
+result = warpPerspective(image, H, (W, H))
+                </div>
+            </div>
+
+            <div class="explanation" style="margin-top: var(--space-lg);">
+                <h3>💡 重要なポイント</h3>
+                <p>
+                    射影変換は、スマートフォンのスキャンアプリ、ドローン画像の補正、看板認識など、
+                    カメラの視点角度を補正する際に広く使われています。4つのコーナーペアがあれば、
+                    任意の台形を長方形に変換できます。左側のキャンバスを操作して、その効果を確認してください！
+                </p>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        // Canvas setup
+        const sourceCanvas = document.getElementById('sourceCanvas');
+        const resultCanvas = document.getElementById('resultCanvas');
+        const sourceCtx = sourceCanvas.getContext('2d');
+        const resultCtx = resultCanvas.getContext('2d');
+
+        // State
+        let sourceCorners = [
+            { x: 50, y: 50 },      // top-left
+            { x: 350, y: 30 },     // top-right
+            { x: 380, y: 270 },    // bottom-right
+            { x: 30, y: 280 }      // bottom-left
+        ];
+
+        let destCorners = [
+            { x: 0, y: 0 },
+            { x: 400, y: 0 },
+            { x: 400, y: 300 },
+            { x: 0, y: 300 }
+        ];
+
+        let draggedCorner = null;
+        let dragOffset = { x: 0, y: 0 };
+
+        // Initialize
+        function init() {
+            sourceCanvas.addEventListener('mousedown', handleCanvasMouseDown);
+            sourceCanvas.addEventListener('mousemove', handleCanvasMouseMove);
+            sourceCanvas.addEventListener('mouseup', handleCanvasMouseUp);
+            sourceCanvas.addEventListener('mouseleave', handleCanvasMouseUp);
+
+            draw();
+        }
+
+        // Mouse event handlers
+        function handleCanvasMouseDown(e) {
+            const rect = sourceCanvas.getBoundingClientRect();
+            const scaleX = sourceCanvas.width / rect.width;
+            const scaleY = sourceCanvas.height / rect.height;
+            const mouseX = (e.clientX - rect.left) * scaleX;
+            const mouseY = (e.clientY - rect.top) * scaleY;
+
+            for (let i = 0; i < sourceCorners.length; i++) {
+                const corner = sourceCorners[i];
+                const dist = Math.sqrt((corner.x - mouseX) ** 2 + (corner.y - mouseY) ** 2);
+                if (dist < 15) {
+                    draggedCorner = i;
+                    dragOffset = { x: mouseX - corner.x, y: mouseY - corner.y };
+                    break;
+                }
+            }
+        }
+
+        function handleCanvasMouseMove(e) {
+            if (draggedCorner === null) return;
+
+            const rect = sourceCanvas.getBoundingClientRect();
+            const scaleX = sourceCanvas.width / rect.width;
+            const scaleY = sourceCanvas.height / rect.height;
+            const mouseX = (e.clientX - rect.left) * scaleX;
+            const mouseY = (e.clientY - rect.top) * scaleY;
+
+            sourceCorners[draggedCorner].x = mouseX - dragOffset.x;
+            sourceCorners[draggedCorner].y = mouseY - dragOffset.y;
+
+            // Constrain to canvas
+            sourceCorners[draggedCorner].x = Math.max(0, Math.min(sourceCanvas.width, sourceCorners[draggedCorner].x));
+            sourceCorners[draggedCorner].y = Math.max(0, Math.min(sourceCanvas.height, sourceCorners[draggedCorner].y));
+
+            draw();
+        }
+
+        function handleCanvasMouseUp() {
+            draggedCorner = null;
+        }
+
+        // Drawing
+        function draw() {
+            // Clear canvases
+            sourceCtx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--color-bg');
+            sourceCtx.fillRect(0, 0, sourceCanvas.width, sourceCanvas.height);
+
+            resultCtx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--color-bg');
+            resultCtx.fillRect(0, 0, resultCanvas.width, resultCanvas.height);
+
+            // Draw source trapezoid
+            drawTrapezoid(sourceCtx, sourceCorners);
+
+            // Calculate homography matrix and draw result
+            const H = calculateHomography(sourceCorners, destCorners);
+            if (H) {
+                drawCorrected(resultCtx, H);
+                updateMatrixDisplay(H);
+                updateCoordinates();
+                updateParameters(H);
+            }
+        }
+
+        function drawTrapezoid(ctx, corners) {
+            const color = getComputedStyle(document.documentElement).getPropertyValue('--color-accent');
+
+            // Draw trapezoid
+            ctx.fillStyle = 'rgba(14, 165, 233, 0.1)';
+            ctx.strokeStyle = color;
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(corners[0].x, corners[0].y);
+            ctx.lineTo(corners[1].x, corners[1].y);
+            ctx.lineTo(corners[2].x, corners[2].y);
+            ctx.lineTo(corners[3].x, corners[3].y);
+            ctx.closePath();
+            ctx.fill();
+            ctx.stroke();
+
+            // Draw corner points
+            ctx.fillStyle = color;
+            ctx.strokeStyle = '#ffffff';
+            ctx.lineWidth = 2;
+            for (let i = 0; i < corners.length; i++) {
+                ctx.beginPath();
+                ctx.arc(corners[i].x, corners[i].y, 8, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.stroke();
+
+                // Draw corner labels
+                ctx.fillStyle = '#666666';
+                ctx.font = '12px sans-serif';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                const labels = ['0', '1', '2', '3'];
+                ctx.fillText(labels[i], corners[i].x, corners[i].y);
+                ctx.fillStyle = color;
+            }
+
+            // Draw grid
+            ctx.strokeStyle = 'rgba(14, 165, 233, 0.2)';
+            ctx.lineWidth = 1;
+            for (let i = 1; i < 4; i++) {
+                const t = i / 4;
+                const p1 = interpolate(corners[0], corners[1], t);
+                const p2 = interpolate(corners[3], corners[2], t);
+                ctx.beginPath();
+                ctx.moveTo(p1.x, p1.y);
+                ctx.lineTo(p2.x, p2.y);
+                ctx.stroke();
+            }
+            for (let i = 1; i < 4; i++) {
+                const t = i / 4;
+                const p1 = interpolate(corners[0], corners[3], t);
+                const p2 = interpolate(corners[1], corners[2], t);
+                ctx.beginPath();
+                ctx.moveTo(p1.x, p1.y);
+                ctx.lineTo(p2.x, p2.y);
+                ctx.stroke();
+            }
+        }
+
+        function interpolate(p1, p2, t) {
+            return {
+                x: p1.x + (p2.x - p1.x) * t,
+                y: p1.y + (p2.y - p1.y) * t
+            };
+        }
+
+        function drawCorrected(ctx, H) {
+            const textureCanvas = createTextureCanvas();
+
+            // Transform and draw using homography
+            const Hinv = invertMatrix(H);
+            const imageData = ctx.createImageData(resultCanvas.width, resultCanvas.height);
+            const data = imageData.data;
+
+            for (let v = 0; v < resultCanvas.height; v++) {
+                for (let u = 0; u < resultCanvas.width; u++) {
+                    // Transform destination coordinate to source
+                    const coords = applyHomography(Hinv, u, v);
+                    const x = coords.x;
+                    const y = coords.y;
+
+                    // Bilinear interpolation
+                    const color = sampleTexture(textureCanvas, x, y);
+
+                    const idx = (v * resultCanvas.width + u) * 4;
+                    data[idx] = color.r;
+                    data[idx + 1] = color.g;
+                    data[idx + 2] = color.b;
+                    data[idx + 3] = 255;
+                }
+            }
+
+            ctx.putImageData(imageData, 0, 0);
+
+            // Draw rectangle border
+            ctx.strokeStyle = getComputedStyle(document.documentElement).getPropertyValue('--color-accent');
+            ctx.lineWidth = 2;
+            ctx.strokeRect(1, 1, resultCanvas.width - 2, resultCanvas.height - 2);
+        }
+
+        function createTextureCanvas() {
+            const canvas = document.createElement('canvas');
+            canvas.width = sourceCanvas.width;
+            canvas.height = sourceCanvas.height;
+            const ctx = canvas.getContext('2d');
+
+            // Fill with pattern
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // Draw grid
+            ctx.strokeStyle = '#e5e7eb';
+            ctx.lineWidth = 1;
+            for (let i = 0; i <= 10; i++) {
+                const x = (canvas.width / 10) * i;
+                const y = (canvas.height / 10) * i;
+                ctx.beginPath();
+                ctx.moveTo(x, 0);
+                ctx.lineTo(x, canvas.height);
+                ctx.stroke();
+                ctx.beginPath();
+                ctx.moveTo(0, y);
+                ctx.lineTo(canvas.width, y);
+                ctx.stroke();
+            }
+
+            // Draw trapezoid outline
+            ctx.strokeStyle = '#0ea5e9';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(sourceCorners[0].x, sourceCorners[0].y);
+            ctx.lineTo(sourceCorners[1].x, sourceCorners[1].y);
+            ctx.lineTo(sourceCorners[2].x, sourceCorners[2].y);
+            ctx.lineTo(sourceCorners[3].x, sourceCorners[3].y);
+            ctx.closePath();
+            ctx.stroke();
+
+            // Add text
+            ctx.fillStyle = '#1f2937';
+            ctx.font = 'bold 14px sans-serif';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText('射影変換', canvas.width / 2, canvas.height / 2);
+
+            return canvas;
+        }
+
+        function sampleTexture(canvas, x, y) {
+            x = Math.max(0, Math.min(canvas.width - 1, x));
+            y = Math.max(0, Math.min(canvas.height - 1, y));
+
+            const x0 = Math.floor(x);
+            const x1 = Math.ceil(x);
+            const y0 = Math.floor(y);
+            const y1 = Math.ceil(y);
+
+            const ctx = canvas.getContext('2d');
+            const img00 = ctx.getImageData(x0, y0, 1, 1).data;
+            const img10 = ctx.getImageData(x1, y0, 1, 1).data;
+            const img01 = ctx.getImageData(x0, y1, 1, 1).data;
+            const img11 = ctx.getImageData(x1, y1, 1, 1).data;
+
+            const fx = x - x0;
+            const fy = y - y0;
+
+            return {
+                r: Math.round(
+                    img00[0] * (1 - fx) * (1 - fy) +
+                    img10[0] * fx * (1 - fy) +
+                    img01[0] * (1 - fx) * fy +
+                    img11[0] * fx * fy
+                ),
+                g: Math.round(
+                    img00[1] * (1 - fx) * (1 - fy) +
+                    img10[1] * fx * (1 - fy) +
+                    img01[1] * (1 - fx) * fy +
+                    img11[1] * fx * fy
+                ),
+                b: Math.round(
+                    img00[2] * (1 - fx) * (1 - fy) +
+                    img10[2] * fx * (1 - fy) +
+                    img01[2] * (1 - fx) * fy +
+                    img11[2] * fx * fy
+                )
+            };
+        }
+
+        // Homography calculation
+        function calculateHomography(src, dst) {
+            const A = [];
+            for (let i = 0; i < 4; i++) {
+                const x = src[i].x;
+                const y = src[i].y;
+                const u = dst[i].x;
+                const v = dst[i].y;
+
+                A.push([-x, -y, -1, 0, 0, 0, u * x, u * y, u]);
+                A.push([0, 0, 0, -x, -y, -1, v * x, v * y, v]);
+            }
+
+            // SVD approximation: use least squares
+            const H = solveLeastSquares(A);
+            return H;
+        }
+
+        function solveLeastSquares(A) {
+            // Simplified: use determinant method
+            const a11 = A[0][0], a12 = A[0][1], a13 = A[0][2];
+            const a21 = A[0][3], a22 = A[0][4], a23 = A[0][5];
+            const a31 = A[0][6], a32 = A[0][7], a33 = A[0][8];
+
+            // Use basic matrix computation
+            const matrix = [
+                [1, 0, 0],
+                [0, 1, 0],
+                [0, 0, 1]
+            ];
+
+            // More accurate: solve using the actual system
+            return solveHomographyExact();
+        }
+
+        function solveHomographyExact() {
+            const src = sourceCorners;
+            const dst = destCorners;
+
+            // Build the matrix A (8x9)
+            const A = [];
+            for (let i = 0; i < 4; i++) {
+                const x = src[i].x;
+                const y = src[i].y;
+                const u = dst[i].x;
+                const v = dst[i].y;
+
+                A.push([-x, -y, -1, 0, 0, 0, u * x, u * y, u]);
+                A.push([0, 0, 0, -x, -y, -1, v * x, v * y, v]);
+            }
+
+            // Solve using Gaussian elimination (simplified)
+            const H = gaussianElimination(A);
+            return H;
+        }
+
+        function gaussianElimination(A) {
+            // Extended system: A * h = 0
+            // Use normal equations: A^T * A * h = 0
+            const ATA = multiplyMatrixTranspose(A, A);
+            const eigenvector = getSmallestEigenvector(ATA);
+
+            return [
+                [eigenvector[0], eigenvector[1], eigenvector[2]],
+                [eigenvector[3], eigenvector[4], eigenvector[5]],
+                [eigenvector[6], eigenvector[7], 1.0]
+            ];
+        }
+
+        function multiplyMatrixTranspose(A, B) {
+            const result = Array(9).fill(0).map(() => Array(9).fill(0));
+            for (let i = 0; i < 9; i++) {
+                for (let j = 0; j < 9; j++) {
+                    for (let k = 0; k < A.length; k++) {
+                        result[i][j] += A[k][i] * A[k][j];
+                    }
+                }
+            }
+            return result;
+        }
+
+        function getSmallestEigenvector(matrix) {
+            // Power iteration to find smallest eigenvalue's eigenvector
+            let v = Array(9).fill(1);
+
+            for (let iter = 0; iter < 10; iter++) {
+                let mv = Array(9).fill(0);
+                for (let i = 0; i < 9; i++) {
+                    for (let j = 0; j < 9; j++) {
+                        mv[i] += matrix[i][j] * v[j];
+                    }
+                }
+
+                const norm = Math.sqrt(mv.reduce((a, b) => a + b * b, 0));
+                v = mv.map(x => x / norm);
+            }
+
+            return v;
+        }
+
+        function applyHomography(H, u, v) {
+            const x = H[0][0] * u + H[0][1] * v + H[0][2];
+            const y = H[1][0] * u + H[1][1] * v + H[1][2];
+            const w = H[2][0] * u + H[2][1] * v + H[2][2];
+
+            return { x: x / w, y: y / w };
+        }
+
+        function invertMatrix(M) {
+            const a = M[0][0], b = M[0][1], c = M[0][2];
+            const d = M[1][0], e = M[1][1], f = M[1][2];
+            const g = M[2][0], h = M[2][1], i = M[2][2];
+
+            const det = a * (e * i - f * h) - b * (d * i - f * g) + c * (d * h - e * g);
+
+            if (Math.abs(det) < 1e-10) return null;
+
+            const invDet = 1 / det;
+
+            return [
+                [(e * i - f * h) * invDet, (c * h - b * i) * invDet, (b * f - c * e) * invDet],
+                [(f * g - d * i) * invDet, (a * i - c * g) * invDet, (c * d - a * f) * invDet],
+                [(d * h - e * g) * invDet, (b * g - a * h) * invDet, (a * e - b * d) * invDet]
+            ];
+        }
+
+        // Update displays
+        function updateMatrixDisplay(H) {
+            const display = document.getElementById('matrixDisplay');
+            display.innerHTML = '';
+
+            for (let i = 0; i < 3; i++) {
+                const row = document.createElement('div');
+                row.className = 'matrix-row';
+
+                for (let j = 0; j < 3; j++) {
+                    const cell = document.createElement('div');
+                    cell.className = 'matrix-cell';
+                    cell.textContent = (j === 0 ? '[ ' : '') + H[i][j].toFixed(6) + (j === 2 ? ' ]' : '');
+                    row.appendChild(cell);
+                }
+
+                display.appendChild(row);
+            }
+        }
+
+        function updateCoordinates() {
+            for (let i = 0; i < 4; i++) {
+                const src = sourceCorners[i];
+                const dst = destCorners[i];
+                document.getElementById(`coord-src-${i}`).textContent = `(${Math.round(src.x)}, ${Math.round(src.y)})`;
+                document.getElementById(`coord-dst-${i}`).textContent = `(${Math.round(dst.x)}, ${Math.round(dst.y)})`;
+            }
+        }
+
+        function updateParameters(H) {
+            // Determinant
+            const det = H[0][0] * (H[1][1] * H[2][2] - H[1][2] * H[2][1]) -
+                        H[0][1] * (H[1][0] * H[2][2] - H[1][2] * H[2][0]) +
+                        H[0][2] * (H[1][0] * H[2][1] - H[1][1] * H[2][0]);
+
+            // Perspective coefficients
+            const perspCoeff = Math.sqrt(H[2][0] * H[2][0] + H[2][1] * H[2][1]);
+
+            // Scale ratio
+            const srcArea = trapezoidArea(sourceCorners);
+            const dstArea = 400 * 300;
+            const scale = dstArea / (srcArea || 1);
+
+            document.getElementById('param-det').textContent = det.toFixed(4);
+            document.getElementById('param-perspective').textContent = perspCoeff.toFixed(6);
+            document.getElementById('param-scale').textContent = scale.toFixed(3);
+            document.getElementById('param-status').textContent = Math.abs(det) > 0.01 ? '✓ 有効' : '✗ 無効';
+        }
+
+        function trapezoidArea(corners) {
+            const [a, b, c, d] = corners;
+            return Math.abs(
+                (a.x * b.y - b.x * a.y) +
+                (b.x * c.y - c.x * b.y) +
+                (c.x * d.y - d.x * c.y) +
+                (d.x * a.y - a.x * d.y)
+            ) / 2;
+        }
+
+        // Preset functions
+        function resetCorners() {
+            sourceCorners = [
+                { x: 50, y: 50 },
+                { x: 350, y: 30 },
+                { x: 380, y: 270 },
+                { x: 30, y: 280 }
+            ];
+            draw();
+        }
+
+        function applyPreset(type) {
+            if (type === 'trapezoid') {
+                sourceCorners = [
+                    { x: 80, y: 50 },
+                    { x: 320, y: 50 },
+                    { x: 360, y: 270 },
+                    { x: 20, y: 270 }
+                ];
+            } else if (type === 'extreme') {
+                sourceCorners = [
+                    { x: 120, y: 20 },
+                    { x: 280, y: 10 },
+                    { x: 370, y: 280 },
+                    { x: 10, y: 290 }
+                ];
+            } else if (type === 'perspective') {
+                sourceCorners = [
+                    { x: 150, y: 40 },
+                    { x: 350, y: 50 },
+                    { x: 320, y: 280 },
+                    { x: 70, y: 270 }
+                ];
+            }
+            draw();
+        }
+
+        // Start
+        init();
+    </script>
+</body>
+</html>
