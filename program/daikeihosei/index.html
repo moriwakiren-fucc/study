@@ -2,13 +2,16 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=yes">
     <title>射影変換を学ぶ | インタラクティブな台形補正</title>
     <style>
         * {
             margin: 0;
             padding: 0;
             box-sizing: border-box;
+            -webkit-touch-callout: none;
+            -webkit-user-select: none;
+            user-select: none;
         }
 
         :root {
@@ -22,7 +25,6 @@
             --color-accent-light: #e0f2fe;
             --color-error: #ef4444;
             --color-success: #10b981;
-            --color-warning: #f59e0b;
             --space-xs: 4px;
             --space-sm: 8px;
             --space-md: 16px;
@@ -55,6 +57,11 @@
             line-height: 1.6;
         }
 
+        input[type="text"], input[type="number"] {
+            -webkit-user-select: text;
+            user-select: text;
+        }
+
         header {
             background: var(--color-surface);
             border-bottom: 1px solid var(--color-border);
@@ -84,7 +91,7 @@
         main {
             max-width: 1400px;
             margin: 0 auto;
-            padding: var(--space-xl);
+            padding: var(--space-lg);
         }
 
         .grid {
@@ -140,6 +147,8 @@
             display: flex;
             align-items: center;
             justify-content: center;
+            overflow: hidden;
+            touch-action: manipulation;
         }
 
         canvas {
@@ -147,6 +156,7 @@
             max-width: 100%;
             max-height: 100%;
             cursor: crosshair;
+            touch-action: none;
         }
 
         .help-text {
@@ -156,10 +166,46 @@
             font-style: italic;
         }
 
-        /* Control panel */
+        /* File upload */
+        .upload-section {
+            margin-bottom: var(--space-lg);
+        }
+
+        .file-input-wrapper {
+            position: relative;
+            display: inline-block;
+            width: 100%;
+        }
+
+        input[type="file"] {
+            display: none;
+        }
+
+        .file-label {
+            display: block;
+            padding: var(--space-md);
+            background: var(--color-bg);
+            border: 2px dashed var(--color-border);
+            border-radius: var(--radius-md);
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .file-label:hover {
+            border-color: var(--color-accent);
+            background: var(--color-accent-light);
+        }
+
+        .file-label.active {
+            border-color: var(--color-accent);
+            background: var(--color-accent-light);
+        }
+
+        /* Control panels */
         .controls {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+            grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
             gap: var(--space-md);
             margin-bottom: var(--space-lg);
         }
@@ -191,8 +237,8 @@
         input[type="range"]::-webkit-slider-thumb {
             -webkit-appearance: none;
             appearance: none;
-            width: 16px;
-            height: 16px;
+            width: 18px;
+            height: 18px;
             border-radius: 50%;
             background: var(--color-accent);
             cursor: pointer;
@@ -201,13 +247,29 @@
         }
 
         input[type="range"]::-moz-range-thumb {
-            width: 16px;
-            height: 16px;
+            width: 18px;
+            height: 18px;
             border-radius: 50%;
             background: var(--color-accent);
             cursor: pointer;
             border: 2px solid var(--color-surface);
             box-shadow: 0 0 0 1px var(--color-border);
+        }
+
+        input[type="number"] {
+            padding: var(--space-sm);
+            border: 1px solid var(--color-border);
+            background: var(--color-bg);
+            color: var(--color-text-primary);
+            border-radius: var(--radius-sm);
+            font-size: 13px;
+            font-family: 'Monaco', 'Courier New', monospace;
+        }
+
+        input[type="number"]:focus {
+            outline: none;
+            border-color: var(--color-accent);
+            background: var(--color-surface);
         }
 
         .value-display {
@@ -228,6 +290,14 @@
             font-weight: 500;
             cursor: pointer;
             transition: all 0.2s;
+            -webkit-user-select: none;
+            user-select: none;
+        }
+
+        button:active {
+            background: var(--color-bg);
+            border-color: var(--color-accent);
+            color: var(--color-accent);
         }
 
         button:hover {
@@ -247,10 +317,16 @@
             border-color: #0284c7;
         }
 
+        button.primary:active {
+            background: #0369a1;
+            border-color: #0369a1;
+        }
+
         .button-group {
             display: flex;
             gap: var(--space-sm);
             margin-bottom: var(--space-lg);
+            flex-wrap: wrap;
         }
 
         /* Output section */
@@ -295,7 +371,7 @@
         /* Coordinates display */
         .coords-grid {
             display: grid;
-            grid-template-columns: repeat(2, 1fr);
+            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
             gap: var(--space-md);
         }
 
@@ -318,6 +394,18 @@
             font-size: 13px;
             color: var(--color-text-primary);
             font-weight: 600;
+        }
+
+        .coord-inputs {
+            display: flex;
+            gap: var(--space-xs);
+            margin-top: var(--space-xs);
+        }
+
+        .coord-inputs input {
+            flex: 1;
+            padding: 4px 6px;
+            font-size: 12px;
         }
 
         /* Explanation section */
@@ -382,6 +470,7 @@
             color: white;
             font-size: 12px;
             font-weight: 600;
+            flex-shrink: 0;
         }
 
         .theory-item p {
@@ -401,15 +490,6 @@
             overflow-x: auto;
             margin-top: var(--space-sm);
             color: var(--color-text-primary);
-        }
-
-        .color-indicator {
-            display: inline-block;
-            width: 12px;
-            height: 12px;
-            border-radius: 3px;
-            vertical-align: middle;
-            margin-right: var(--space-xs);
         }
 
         @media (prefers-reduced-motion: reduce) {
@@ -435,6 +515,53 @@
             .controls {
                 grid-template-columns: repeat(2, 1fr);
             }
+
+            .button-group {
+                flex-direction: column;
+            }
+
+            button {
+                width: 100%;
+            }
+        }
+
+        .touch-info {
+            font-size: 11px;
+            color: var(--color-text-tertiary);
+            margin-top: var(--space-sm);
+            font-style: italic;
+        }
+
+        /* Tabs */
+        .tabs {
+            display: flex;
+            gap: var(--space-sm);
+            margin-bottom: var(--space-lg);
+            border-bottom: 1px solid var(--color-border);
+        }
+
+        .tab-button {
+            padding: var(--space-sm) var(--space-md);
+            background: none;
+            border: none;
+            border-bottom: 2px solid transparent;
+            color: var(--color-text-secondary);
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .tab-button.active {
+            border-bottom-color: var(--color-accent);
+            color: var(--color-accent);
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
         }
     </style>
 </head>
@@ -442,7 +569,7 @@
     <header>
         <div class="header-content">
             <h1>射影変換を学ぶ</h1>
-            <p class="subtitle">インタラクティブな台形補正 | 4つのコーナーをドラッグして、ホモグラフィ行列をリアルタイムで確認</p>
+            <p class="subtitle">インタラクティブな台形補正 | タッチ・数値入力対応 | 自分の画像をアップロード可能</p>
         </div>
     </header>
 
@@ -455,10 +582,22 @@
                         <span class="icon">①</span>
                         元画像（斜めから撮影）
                     </div>
+                    
+                    <div class="upload-section">
+                        <div class="file-input-wrapper">
+                            <input type="file" id="imageInput" accept="image/*">
+                            <label for="imageInput" class="file-label" id="fileLabel">
+                                📁 画像をアップロード<br>
+                                <span style="font-size: 11px; color: var(--color-text-tertiary);">またはここをタップして選択</span>
+                            </label>
+                        </div>
+                    </div>
+
                     <div class="canvas-wrapper">
                         <canvas id="sourceCanvas" width="400" height="300"></canvas>
                     </div>
-                    <p class="help-text">💡 4つのコーナーをドラッグして、台形の形を変えてください</p>
+                    <p class="help-text">💡 4つのコーナーをドラッグするか、下の数値で座標を指定してください</p>
+                    <p class="touch-info">タッチ対応：コーナーの近くをタップして上下左右にドラッグ</p>
                 </div>
             </div>
 
@@ -486,24 +625,25 @@
 
             <div class="explanation">
                 <h3>📐 現在の操作</h3>
-                <p>左側のキャンバスで4つのコーナー（●）をドラッグすると、リアルタイムで以下が計算されます：</p>
-                <ul style="margin-left: var(--space-md); margin-top: var(--space-sm);">
-                    <li>ホモグラフィ行列 H（3×3）</li>
-                    <li>補正後の画像</li>
-                    <li>各種パラメータ</li>
-                </ul>
+                <p>コーナーをドラッグするか、下の数値を変更することで、リアルタイムで以下が計算されます：ホモグラフィ行列 H、補正後の画像、各種パラメータ</p>
             </div>
 
             <div class="button-group">
                 <button onclick="resetCorners()" class="primary">リセット</button>
-                <button onclick="applyPreset('trapezoid')">台形サンプル</button>
-                <button onclick="applyPreset('extreme')">極端な角度</button>
-                <button onclick="applyPreset('perspective')">透視図</button>
+                <button onclick="applyPreset('trapezoid')">台形</button>
+                <button onclick="applyPreset('extreme')">極端</button>
+                <button onclick="applyPreset('perspective')">透視</button>
             </div>
 
-            <!-- Source coordinates -->
-            <div class="output-section">
-                <div class="subsection-title">元画像のコーナー座標</div>
+            <!-- Tabs -->
+            <div class="tabs">
+                <button class="tab-button active" onclick="switchTab('drag')">ドラッグ操作</button>
+                <button class="tab-button" onclick="switchTab('numeric')">数値入力</button>
+            </div>
+
+            <!-- Drag control tab -->
+            <div id="tab-drag" class="tab-content active">
+                <div class="subsection-title">コーナー座標（タップ＆ドラッグで調整）</div>
                 <div class="coords-grid">
                     <div class="coord-box">
                         <div class="coord-label">左上 (src[0])</div>
@@ -524,25 +664,37 @@
                 </div>
             </div>
 
-            <!-- Destination coordinates -->
-            <div class="output-section">
-                <div class="subsection-title">補正後のコーナー座標</div>
+            <!-- Numeric input tab -->
+            <div id="tab-numeric" class="tab-content">
+                <div class="subsection-title">コーナー座標を数値で指定</div>
                 <div class="coords-grid">
                     <div class="coord-box">
-                        <div class="coord-label">左上 (dst[0])</div>
-                        <div class="coord-value" id="coord-dst-0">(0, 0)</div>
+                        <div class="coord-label">左上 (X, Y)</div>
+                        <div class="coord-inputs">
+                            <input type="number" id="src-0-x" placeholder="X" min="0" max="400" onchange="updateCornerFromInput(0)">
+                            <input type="number" id="src-0-y" placeholder="Y" min="0" max="300" onchange="updateCornerFromInput(0)">
+                        </div>
                     </div>
                     <div class="coord-box">
-                        <div class="coord-label">右上 (dst[1])</div>
-                        <div class="coord-value" id="coord-dst-1">(400, 0)</div>
+                        <div class="coord-label">右上 (X, Y)</div>
+                        <div class="coord-inputs">
+                            <input type="number" id="src-1-x" placeholder="X" min="0" max="400" onchange="updateCornerFromInput(1)">
+                            <input type="number" id="src-1-y" placeholder="Y" min="0" max="300" onchange="updateCornerFromInput(1)">
+                        </div>
                     </div>
                     <div class="coord-box">
-                        <div class="coord-label">右下 (dst[2])</div>
-                        <div class="coord-value" id="coord-dst-2">(400, 300)</div>
+                        <div class="coord-label">右下 (X, Y)</div>
+                        <div class="coord-inputs">
+                            <input type="number" id="src-2-x" placeholder="X" min="0" max="400" onchange="updateCornerFromInput(2)">
+                            <input type="number" id="src-2-y" placeholder="Y" min="0" max="300" onchange="updateCornerFromInput(2)">
+                        </div>
                     </div>
                     <div class="coord-box">
-                        <div class="coord-label">左下 (dst[3])</div>
-                        <div class="coord-value" id="coord-dst-3">(0, 300)</div>
+                        <div class="coord-label">左下 (X, Y)</div>
+                        <div class="coord-inputs">
+                            <input type="number" id="src-3-x" placeholder="X" min="0" max="400" onchange="updateCornerFromInput(3)">
+                            <input type="number" id="src-3-y" placeholder="Y" min="0" max="300" onchange="updateCornerFromInput(3)">
+                        </div>
                     </div>
                 </div>
             </div>
@@ -552,7 +704,7 @@
                 <div class="subsection-title">ホモグラフィ行列 H（3×3）</div>
                 <p style="font-size: 13px; color: var(--color-text-secondary); margin-bottom: var(--space-md);">
                     この行列が、元画像の座標を補正後の座標に変換します。<br>
-                    出力画像のピクセルに対して、<code style="background: var(--color-bg); padding: 2px 6px; border-radius: 3px;">H⁻¹</code>（逆行列）を適用し、元画像からサンプリングします。
+                    <code style="background: var(--color-bg); padding: 2px 6px; border-radius: 3px;">H⁻¹</code>（逆行列）を適用し、元画像からサンプリングします。
                 </p>
                 <div class="matrix-display" id="matrixDisplay">
                     <div class="matrix-row">
@@ -641,19 +793,8 @@ src[3] (x4,y4)  →  dst[3] (u4,v4)
                     行列の計算方法
                 </h3>
                 <p>
-                    4つのコーナー対応から、8×9 の線形方程式系を構築し、SVD（特異値分解）で解きます：
+                    4つのコーナー対応から、8×9 の線形方程式系を構築し、SVD（特異値分解）で解きます。
                 </p>
-                <div class="code-block">
-A · h = 0<br>
-<br>
-ここで A は以下の形式：<br>
-A = [<br>
-  -x₁  -y₁  -1   0    0    0   u₁x₁  u₁y₁  u₁<br>
-   0    0    0  -x₁  -y₁  -1   v₁x₁  v₁y₁  v₁<br>
-  -x₂  -y₂  -1   0    0    0   u₂x₂  u₂y₂  u₂<br>
-   ...<br>
-]
-                </div>
             </div>
 
             <div class="theory-item">
@@ -669,56 +810,18 @@ A = [<br>
 [y]  =  H⁻¹ · [v]<br>
 [1]     [1]<br>
 <br>
-元画像でのサンプリング位置 (x, y) が計算されます。<br>
-小数座標の場合は、周辺ピクセルから補間します。
-                </div>
-            </div>
-
-            <div class="theory-item">
-                <h3>
-                    <span class="step-num">5</span>
-                    補間方式
-                </h3>
-                <p>
-                    サンプリング位置が整数座標でない場合、複数の補間方式が使えます：
-                </p>
-                <ul style="margin-left: var(--space-md); margin-top: var(--space-sm);">
-                    <li><strong>最近傍補間</strong> — 最も近いピクセルの値を使用（高速、低品質）</li>
-                    <li><strong>双一次補間</strong> — 4つの周辺ピクセルから線形補間（バランス型、推奨）</li>
-                    <li><strong>双三次補間</strong> — 16個のピクセルから補間（高品質、遅い）</li>
-                </ul>
-            </div>
-
-            <div class="theory-item">
-                <h3>
-                    <span class="step-num">6</span>
-                    実践例：文書スキャン
-                </h3>
-                <p>
-                    スマートフォンで斜めから撮影した書類を、自動的に正面ビューに補正する場合：
-                </p>
-                <div class="code-block">
-// 入力: 傾いた文書の4つのコーナー<br>
-src = [(x1,y1), (x2,y2), (x3,y3), (x4,y4)]<br>
-<br>
-// 出力: 長方形<br>
-dst = [(0,0), (W,0), (W,H), (0,H)]<br>
-<br>
-// ホモグラフィ行列を計算<br>
-H = getPerspectiveTransform(src, dst)<br>
-<br>
-// 補正<br>
-result = warpPerspective(image, H, (W, H))
+元画像でのサンプリング位置 (x, y) が計算されます。
                 </div>
             </div>
 
             <div class="explanation" style="margin-top: var(--space-lg);">
-                <h3>💡 重要なポイント</h3>
-                <p>
-                    射影変換は、スマートフォンのスキャンアプリ、ドローン画像の補正、看板認識など、
-                    カメラの視点角度を補正する際に広く使われています。4つのコーナーペアがあれば、
-                    任意の台形を長方形に変換できます。左側のキャンバスを操作して、その効果を確認してください！
-                </p>
+                <h3>💡 使い方のコツ</h3>
+                <ul style="margin-left: var(--space-md); margin-top: var(--space-sm); color: var(--color-text-secondary);">
+                    <li><strong>タッチ操作</strong>：コーナーの●の近くをタップしてドラッグ</li>
+                    <li><strong>数値入力</strong>：「数値入力」タブから正確な座標を指定</li>
+                    <li><strong>画像アップロード</strong>：自分の写真を使って補正を体験</li>
+                    <li><strong>プリセット</strong>：サンプル形状をワンクリックで適用</li>
+                </ul>
             </div>
         </div>
     </main>
@@ -729,13 +832,14 @@ result = warpPerspective(image, H, (W, H))
         const resultCanvas = document.getElementById('resultCanvas');
         const sourceCtx = sourceCanvas.getContext('2d');
         const resultCtx = resultCanvas.getContext('2d');
+        const imageInput = document.getElementById('imageInput');
 
         // State
         let sourceCorners = [
-            { x: 50, y: 50 },      // top-left
-            { x: 350, y: 30 },     // top-right
-            { x: 380, y: 270 },    // bottom-right
-            { x: 30, y: 280 }      // bottom-left
+            { x: 50, y: 50 },
+            { x: 350, y: 30 },
+            { x: 380, y: 270 },
+            { x: 30, y: 280 }
         ];
 
         let destCorners = [
@@ -745,74 +849,153 @@ result = warpPerspective(image, H, (W, H))
             { x: 0, y: 300 }
         ];
 
+        let uploadedImage = null;
         let draggedCorner = null;
         let dragOffset = { x: 0, y: 0 };
 
         // Initialize
         function init() {
+            // Canvas events
             sourceCanvas.addEventListener('mousedown', handleCanvasMouseDown);
             sourceCanvas.addEventListener('mousemove', handleCanvasMouseMove);
             sourceCanvas.addEventListener('mouseup', handleCanvasMouseUp);
             sourceCanvas.addEventListener('mouseleave', handleCanvasMouseUp);
 
+            // Touch events
+            sourceCanvas.addEventListener('touchstart', handleCanvasTouchStart, false);
+            sourceCanvas.addEventListener('touchmove', handleCanvasTouchMove, false);
+            sourceCanvas.addEventListener('touchend', handleCanvasTouchEnd, false);
+
+            // File upload
+            imageInput.addEventListener('change', handleImageUpload);
+            document.getElementById('fileLabel').addEventListener('dragover', (e) => {
+                e.preventDefault();
+                document.getElementById('fileLabel').classList.add('active');
+            });
+            document.getElementById('fileLabel').addEventListener('dragleave', () => {
+                document.getElementById('fileLabel').classList.remove('active');
+            });
+            document.getElementById('fileLabel').addEventListener('drop', (e) => {
+                e.preventDefault();
+                document.getElementById('fileLabel').classList.remove('active');
+                if (e.dataTransfer.files.length > 0) {
+                    imageInput.files = e.dataTransfer.files;
+                    handleImageUpload();
+                }
+            });
+
             draw();
         }
 
-        // Mouse event handlers
-        function handleCanvasMouseDown(e) {
+        // Mouse events
+        function getCanvasCoords(e) {
             const rect = sourceCanvas.getBoundingClientRect();
             const scaleX = sourceCanvas.width / rect.width;
             const scaleY = sourceCanvas.height / rect.height;
             const mouseX = (e.clientX - rect.left) * scaleX;
             const mouseY = (e.clientY - rect.top) * scaleY;
+            return { x: mouseX, y: mouseY };
+        }
 
-            for (let i = 0; i < sourceCorners.length; i++) {
-                const corner = sourceCorners[i];
-                const dist = Math.sqrt((corner.x - mouseX) ** 2 + (corner.y - mouseY) ** 2);
-                if (dist < 15) {
-                    draggedCorner = i;
-                    dragOffset = { x: mouseX - corner.x, y: mouseY - corner.y };
-                    break;
-                }
-            }
+        function handleCanvasMouseDown(e) {
+            const coords = getCanvasCoords(e);
+            startDrag(coords.x, coords.y);
         }
 
         function handleCanvasMouseMove(e) {
             if (draggedCorner === null) return;
-
-            const rect = sourceCanvas.getBoundingClientRect();
-            const scaleX = sourceCanvas.width / rect.width;
-            const scaleY = sourceCanvas.height / rect.height;
-            const mouseX = (e.clientX - rect.left) * scaleX;
-            const mouseY = (e.clientY - rect.top) * scaleY;
-
-            sourceCorners[draggedCorner].x = mouseX - dragOffset.x;
-            sourceCorners[draggedCorner].y = mouseY - dragOffset.y;
-
-            // Constrain to canvas
-            sourceCorners[draggedCorner].x = Math.max(0, Math.min(sourceCanvas.width, sourceCorners[draggedCorner].x));
-            sourceCorners[draggedCorner].y = Math.max(0, Math.min(sourceCanvas.height, sourceCorners[draggedCorner].y));
-
-            draw();
+            const coords = getCanvasCoords(e);
+            updateDrag(coords.x, coords.y);
         }
 
         function handleCanvasMouseUp() {
             draggedCorner = null;
         }
 
+        // Touch events
+        function getTouchCoords(touch) {
+            const rect = sourceCanvas.getBoundingClientRect();
+            const scaleX = sourceCanvas.width / rect.width;
+            const scaleY = sourceCanvas.height / rect.height;
+            const touchX = (touch.clientX - rect.left) * scaleX;
+            const touchY = (touch.clientY - rect.top) * scaleY;
+            return { x: touchX, y: touchY };
+        }
+
+        function handleCanvasTouchStart(e) {
+            e.preventDefault();
+            const touch = e.touches[0];
+            const coords = getTouchCoords(touch);
+            startDrag(coords.x, coords.y);
+        }
+
+        function handleCanvasTouchMove(e) {
+            e.preventDefault();
+            if (draggedCorner === null) return;
+            const touch = e.touches[0];
+            const coords = getTouchCoords(touch);
+            updateDrag(coords.x, coords.y);
+        }
+
+        function handleCanvasTouchEnd(e) {
+            e.preventDefault();
+            draggedCorner = null;
+        }
+
+        // Drag logic
+        function startDrag(x, y) {
+            for (let i = 0; i < sourceCorners.length; i++) {
+                const corner = sourceCorners[i];
+                const dist = Math.sqrt((corner.x - x) ** 2 + (corner.y - y) ** 2);
+                if (dist < 20) {
+                    draggedCorner = i;
+                    dragOffset = { x: x - corner.x, y: y - corner.y };
+                    break;
+                }
+            }
+        }
+
+        function updateDrag(x, y) {
+            sourceCorners[draggedCorner].x = Math.max(0, Math.min(sourceCanvas.width, x - dragOffset.x));
+            sourceCorners[draggedCorner].y = Math.max(0, Math.min(sourceCanvas.height, y - dragOffset.y));
+            updateInputs();
+            draw();
+        }
+
+        // File upload
+        function handleImageUpload() {
+            const file = imageInput.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const img = new Image();
+                img.onload = () => {
+                    uploadedImage = img;
+                    draw();
+                };
+                img.src = e.target.result;
+            };
+            reader.readAsDataURL(file);
+        }
+
         // Drawing
         function draw() {
             // Clear canvases
-            sourceCtx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--color-bg');
+            sourceCtx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--color-bg').trim();
             sourceCtx.fillRect(0, 0, sourceCanvas.width, sourceCanvas.height);
 
-            resultCtx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--color-bg');
+            resultCtx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--color-bg').trim();
             resultCtx.fillRect(0, 0, resultCanvas.width, resultCanvas.height);
 
-            // Draw source trapezoid
-            drawTrapezoid(sourceCtx, sourceCorners);
+            // Draw source
+            if (uploadedImage) {
+                drawUploadedImage(sourceCtx);
+            } else {
+                drawTrapezoid(sourceCtx, sourceCorners);
+            }
 
-            // Calculate homography matrix and draw result
+            // Calculate homography
             const H = calculateHomography(sourceCorners, destCorners);
             if (H) {
                 drawCorrected(resultCtx, H);
@@ -822,21 +1005,66 @@ result = warpPerspective(image, H, (W, H))
             }
         }
 
-        function drawTrapezoid(ctx, corners) {
-            const color = getComputedStyle(document.documentElement).getPropertyValue('--color-accent');
+        function drawUploadedImage(ctx) {
+            // Draw uploaded image
+            const imgWidth = sourceCanvas.width;
+            const imgHeight = sourceCanvas.height;
+            ctx.drawImage(uploadedImage, 0, 0, imgWidth, imgHeight);
 
-            // Draw trapezoid
-            ctx.fillStyle = 'rgba(14, 165, 233, 0.1)';
-            ctx.strokeStyle = color;
-            ctx.lineWidth = 2;
-            ctx.beginPath();
-            ctx.moveTo(corners[0].x, corners[0].y);
-            ctx.lineTo(corners[1].x, corners[1].y);
-            ctx.lineTo(corners[2].x, corners[2].y);
-            ctx.lineTo(corners[3].x, corners[3].y);
-            ctx.closePath();
-            ctx.fill();
-            ctx.stroke();
+            // Draw trapezoid overlay
+            drawTrapezoid(ctx, sourceCorners, true);
+        }
+
+        function drawTrapezoid(ctx, corners, isOverlay = false) {
+            const color = getComputedStyle(document.documentElement).getPropertyValue('--color-accent').trim();
+
+            if (!isOverlay) {
+                // Fill trapezoid
+                ctx.fillStyle = 'rgba(14, 165, 233, 0.1)';
+                ctx.strokeStyle = color;
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.moveTo(corners[0].x, corners[0].y);
+                ctx.lineTo(corners[1].x, corners[1].y);
+                ctx.lineTo(corners[2].x, corners[2].y);
+                ctx.lineTo(corners[3].x, corners[3].y);
+                ctx.closePath();
+                ctx.fill();
+                ctx.stroke();
+
+                // Draw grid
+                ctx.strokeStyle = 'rgba(14, 165, 233, 0.2)';
+                ctx.lineWidth = 1;
+                for (let i = 1; i < 4; i++) {
+                    const t = i / 4;
+                    const p1 = interpolate(corners[0], corners[1], t);
+                    const p2 = interpolate(corners[3], corners[2], t);
+                    ctx.beginPath();
+                    ctx.moveTo(p1.x, p1.y);
+                    ctx.lineTo(p2.x, p2.y);
+                    ctx.stroke();
+                }
+                for (let i = 1; i < 4; i++) {
+                    const t = i / 4;
+                    const p1 = interpolate(corners[0], corners[3], t);
+                    const p2 = interpolate(corners[1], corners[2], t);
+                    ctx.beginPath();
+                    ctx.moveTo(p1.x, p1.y);
+                    ctx.lineTo(p2.x, p2.y);
+                    ctx.stroke();
+                }
+            } else {
+                // Overlay trapezoid outline only
+                ctx.strokeStyle = color;
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.moveTo(corners[0].x, corners[0].y);
+                ctx.lineTo(corners[1].x, corners[1].y);
+                ctx.lineTo(corners[2].x, corners[2].y);
+                ctx.lineTo(corners[3].x, corners[3].y);
+                ctx.closePath();
+                ctx.stroke();
+            }
 
             // Draw corner points
             ctx.fillStyle = color;
@@ -844,40 +1072,18 @@ result = warpPerspective(image, H, (W, H))
             ctx.lineWidth = 2;
             for (let i = 0; i < corners.length; i++) {
                 ctx.beginPath();
-                ctx.arc(corners[i].x, corners[i].y, 8, 0, Math.PI * 2);
+                ctx.arc(corners[i].x, corners[i].y, 10, 0, Math.PI * 2);
                 ctx.fill();
                 ctx.stroke();
 
                 // Draw corner labels
-                ctx.fillStyle = '#666666';
-                ctx.font = '12px sans-serif';
+                ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--color-surface').trim();
+                ctx.font = 'bold 12px sans-serif';
                 ctx.textAlign = 'center';
                 ctx.textBaseline = 'middle';
                 const labels = ['0', '1', '2', '3'];
                 ctx.fillText(labels[i], corners[i].x, corners[i].y);
                 ctx.fillStyle = color;
-            }
-
-            // Draw grid
-            ctx.strokeStyle = 'rgba(14, 165, 233, 0.2)';
-            ctx.lineWidth = 1;
-            for (let i = 1; i < 4; i++) {
-                const t = i / 4;
-                const p1 = interpolate(corners[0], corners[1], t);
-                const p2 = interpolate(corners[3], corners[2], t);
-                ctx.beginPath();
-                ctx.moveTo(p1.x, p1.y);
-                ctx.lineTo(p2.x, p2.y);
-                ctx.stroke();
-            }
-            for (let i = 1; i < 4; i++) {
-                const t = i / 4;
-                const p1 = interpolate(corners[0], corners[3], t);
-                const p2 = interpolate(corners[1], corners[2], t);
-                ctx.beginPath();
-                ctx.moveTo(p1.x, p1.y);
-                ctx.lineTo(p2.x, p2.y);
-                ctx.stroke();
             }
         }
 
@@ -890,20 +1096,15 @@ result = warpPerspective(image, H, (W, H))
 
         function drawCorrected(ctx, H) {
             const textureCanvas = createTextureCanvas();
-
-            // Transform and draw using homography
             const Hinv = invertMatrix(H);
             const imageData = ctx.createImageData(resultCanvas.width, resultCanvas.height);
             const data = imageData.data;
 
             for (let v = 0; v < resultCanvas.height; v++) {
                 for (let u = 0; u < resultCanvas.width; u++) {
-                    // Transform destination coordinate to source
                     const coords = applyHomography(Hinv, u, v);
                     const x = coords.x;
                     const y = coords.y;
-
-                    // Bilinear interpolation
                     const color = sampleTexture(textureCanvas, x, y);
 
                     const idx = (v * resultCanvas.width + u) * 4;
@@ -916,8 +1117,8 @@ result = warpPerspective(image, H, (W, H))
 
             ctx.putImageData(imageData, 0, 0);
 
-            // Draw rectangle border
-            ctx.strokeStyle = getComputedStyle(document.documentElement).getPropertyValue('--color-accent');
+            // Draw border
+            ctx.strokeStyle = getComputedStyle(document.documentElement).getPropertyValue('--color-accent').trim();
             ctx.lineWidth = 2;
             ctx.strokeRect(1, 1, resultCanvas.width - 2, resultCanvas.height - 2);
         }
@@ -928,43 +1129,40 @@ result = warpPerspective(image, H, (W, H))
             canvas.height = sourceCanvas.height;
             const ctx = canvas.getContext('2d');
 
-            // Fill with pattern
-            ctx.fillStyle = '#ffffff';
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-            // Draw grid
-            ctx.strokeStyle = '#e5e7eb';
-            ctx.lineWidth = 1;
-            for (let i = 0; i <= 10; i++) {
-                const x = (canvas.width / 10) * i;
-                const y = (canvas.height / 10) * i;
+            if (uploadedImage) {
+                ctx.drawImage(uploadedImage, 0, 0, canvas.width, canvas.height);
+            } else {
+                ctx.fillStyle = '#ffffff';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                ctx.strokeStyle = '#e5e7eb';
+                ctx.lineWidth = 1;
+                for (let i = 0; i <= 10; i++) {
+                    const x = (canvas.width / 10) * i;
+                    const y = (canvas.height / 10) * i;
+                    ctx.beginPath();
+                    ctx.moveTo(x, 0);
+                    ctx.lineTo(x, canvas.height);
+                    ctx.stroke();
+                    ctx.beginPath();
+                    ctx.moveTo(0, y);
+                    ctx.lineTo(canvas.width, y);
+                    ctx.stroke();
+                }
+                ctx.strokeStyle = '#0ea5e9';
+                ctx.lineWidth = 2;
                 ctx.beginPath();
-                ctx.moveTo(x, 0);
-                ctx.lineTo(x, canvas.height);
+                ctx.moveTo(sourceCorners[0].x, sourceCorners[0].y);
+                ctx.lineTo(sourceCorners[1].x, sourceCorners[1].y);
+                ctx.lineTo(sourceCorners[2].x, sourceCorners[2].y);
+                ctx.lineTo(sourceCorners[3].x, sourceCorners[3].y);
+                ctx.closePath();
                 ctx.stroke();
-                ctx.beginPath();
-                ctx.moveTo(0, y);
-                ctx.lineTo(canvas.width, y);
-                ctx.stroke();
+                ctx.fillStyle = '#1f2937';
+                ctx.font = 'bold 14px sans-serif';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText('射影変換', canvas.width / 2, canvas.height / 2);
             }
-
-            // Draw trapezoid outline
-            ctx.strokeStyle = '#0ea5e9';
-            ctx.lineWidth = 2;
-            ctx.beginPath();
-            ctx.moveTo(sourceCorners[0].x, sourceCorners[0].y);
-            ctx.lineTo(sourceCorners[1].x, sourceCorners[1].y);
-            ctx.lineTo(sourceCorners[2].x, sourceCorners[2].y);
-            ctx.lineTo(sourceCorners[3].x, sourceCorners[3].y);
-            ctx.closePath();
-            ctx.stroke();
-
-            // Add text
-            ctx.fillStyle = '#1f2937';
-            ctx.font = 'bold 14px sans-serif';
-            ctx.textAlign = 'center';
-            ctx.textBaseline = 'middle';
-            ctx.fillText('射影変換', canvas.width / 2, canvas.height / 2);
 
             return canvas;
         }
@@ -1022,52 +1220,6 @@ result = warpPerspective(image, H, (W, H))
                 A.push([0, 0, 0, -x, -y, -1, v * x, v * y, v]);
             }
 
-            // SVD approximation: use least squares
-            const H = solveLeastSquares(A);
-            return H;
-        }
-
-        function solveLeastSquares(A) {
-            // Simplified: use determinant method
-            const a11 = A[0][0], a12 = A[0][1], a13 = A[0][2];
-            const a21 = A[0][3], a22 = A[0][4], a23 = A[0][5];
-            const a31 = A[0][6], a32 = A[0][7], a33 = A[0][8];
-
-            // Use basic matrix computation
-            const matrix = [
-                [1, 0, 0],
-                [0, 1, 0],
-                [0, 0, 1]
-            ];
-
-            // More accurate: solve using the actual system
-            return solveHomographyExact();
-        }
-
-        function solveHomographyExact() {
-            const src = sourceCorners;
-            const dst = destCorners;
-
-            // Build the matrix A (8x9)
-            const A = [];
-            for (let i = 0; i < 4; i++) {
-                const x = src[i].x;
-                const y = src[i].y;
-                const u = dst[i].x;
-                const v = dst[i].y;
-
-                A.push([-x, -y, -1, 0, 0, 0, u * x, u * y, u]);
-                A.push([0, 0, 0, -x, -y, -1, v * x, v * y, v]);
-            }
-
-            // Solve using Gaussian elimination (simplified)
-            const H = gaussianElimination(A);
-            return H;
-        }
-
-        function gaussianElimination(A) {
-            // Extended system: A * h = 0
-            // Use normal equations: A^T * A * h = 0
             const ATA = multiplyMatrixTranspose(A, A);
             const eigenvector = getSmallestEigenvector(ATA);
 
@@ -1091,21 +1243,17 @@ result = warpPerspective(image, H, (W, H))
         }
 
         function getSmallestEigenvector(matrix) {
-            // Power iteration to find smallest eigenvalue's eigenvector
             let v = Array(9).fill(1);
-
-            for (let iter = 0; iter < 10; iter++) {
+            for (let iter = 0; iter < 20; iter++) {
                 let mv = Array(9).fill(0);
                 for (let i = 0; i < 9; i++) {
                     for (let j = 0; j < 9; j++) {
                         mv[i] += matrix[i][j] * v[j];
                     }
                 }
-
                 const norm = Math.sqrt(mv.reduce((a, b) => a + b * b, 0));
                 v = mv.map(x => x / norm);
             }
-
             return v;
         }
 
@@ -1113,7 +1261,6 @@ result = warpPerspective(image, H, (W, H))
             const x = H[0][0] * u + H[0][1] * v + H[0][2];
             const y = H[1][0] * u + H[1][1] * v + H[1][2];
             const w = H[2][0] * u + H[2][1] * v + H[2][2];
-
             return { x: x / w, y: y / w };
         }
 
@@ -1123,11 +1270,9 @@ result = warpPerspective(image, H, (W, H))
             const g = M[2][0], h = M[2][1], i = M[2][2];
 
             const det = a * (e * i - f * h) - b * (d * i - f * g) + c * (d * h - e * g);
-
             if (Math.abs(det) < 1e-10) return null;
 
             const invDet = 1 / det;
-
             return [
                 [(e * i - f * h) * invDet, (c * h - b * i) * invDet, (b * f - c * e) * invDet],
                 [(f * g - d * i) * invDet, (a * i - c * g) * invDet, (c * d - a * f) * invDet],
@@ -1139,18 +1284,15 @@ result = warpPerspective(image, H, (W, H))
         function updateMatrixDisplay(H) {
             const display = document.getElementById('matrixDisplay');
             display.innerHTML = '';
-
             for (let i = 0; i < 3; i++) {
                 const row = document.createElement('div');
                 row.className = 'matrix-row';
-
                 for (let j = 0; j < 3; j++) {
                     const cell = document.createElement('div');
                     cell.className = 'matrix-cell';
                     cell.textContent = (j === 0 ? '[ ' : '') + H[i][j].toFixed(6) + (j === 2 ? ' ]' : '');
                     row.appendChild(cell);
                 }
-
                 display.appendChild(row);
             }
         }
@@ -1158,22 +1300,24 @@ result = warpPerspective(image, H, (W, H))
         function updateCoordinates() {
             for (let i = 0; i < 4; i++) {
                 const src = sourceCorners[i];
-                const dst = destCorners[i];
                 document.getElementById(`coord-src-${i}`).textContent = `(${Math.round(src.x)}, ${Math.round(src.y)})`;
-                document.getElementById(`coord-dst-${i}`).textContent = `(${Math.round(dst.x)}, ${Math.round(dst.y)})`;
+            }
+        }
+
+        function updateInputs() {
+            for (let i = 0; i < 4; i++) {
+                const src = sourceCorners[i];
+                document.getElementById(`src-${i}-x`).value = Math.round(src.x);
+                document.getElementById(`src-${i}-y`).value = Math.round(src.y);
             }
         }
 
         function updateParameters(H) {
-            // Determinant
             const det = H[0][0] * (H[1][1] * H[2][2] - H[1][2] * H[2][1]) -
                         H[0][1] * (H[1][0] * H[2][2] - H[1][2] * H[2][0]) +
                         H[0][2] * (H[1][0] * H[2][1] - H[1][1] * H[2][0]);
 
-            // Perspective coefficients
             const perspCoeff = Math.sqrt(H[2][0] * H[2][0] + H[2][1] * H[2][1]);
-
-            // Scale ratio
             const srcArea = trapezoidArea(sourceCorners);
             const dstArea = 400 * 300;
             const scale = dstArea / (srcArea || 1);
@@ -1194,7 +1338,15 @@ result = warpPerspective(image, H, (W, H))
             ) / 2;
         }
 
-        // Preset functions
+        // Numeric input update
+        function updateCornerFromInput(index) {
+            const x = parseFloat(document.getElementById(`src-${index}-x`).value) || sourceCorners[index].x;
+            const y = parseFloat(document.getElementById(`src-${index}-y`).value) || sourceCorners[index].y;
+            sourceCorners[index] = { x, y };
+            draw();
+        }
+
+        // Presets
         function resetCorners() {
             sourceCorners = [
                 { x: 50, y: 50 },
@@ -1202,6 +1354,7 @@ result = warpPerspective(image, H, (W, H))
                 { x: 380, y: 270 },
                 { x: 30, y: 280 }
             ];
+            updateInputs();
             draw();
         }
 
@@ -1228,7 +1381,16 @@ result = warpPerspective(image, H, (W, H))
                     { x: 70, y: 270 }
                 ];
             }
+            updateInputs();
             draw();
+        }
+
+        // Tab switching
+        function switchTab(tabName) {
+            document.querySelectorAll('.tab-content').forEach(tab => tab.classList.remove('active'));
+            document.querySelectorAll('.tab-button').forEach(btn => btn.classList.remove('active'));
+            document.getElementById(`tab-${tabName}`).classList.add('active');
+            event.target.classList.add('active');
         }
 
         // Start
