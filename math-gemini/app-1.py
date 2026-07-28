@@ -36,12 +36,12 @@ SYSTEM_INSTRUCTION = """
 # 2. ページ基本設定
 # --------------------------------------------------
 st.set_page_config(
-    page_title="高校数学・大学受験AIチューター (ユーザーAPIキー版)",
+    page_title="数学解説Gemini (APIキー要求版)",
     page_icon="📐",
     layout="wide"
 )
 
-st.title("📐 高校数学・大学受験AIチューター")
+st.title("📐 数学解説Gemini")
 st.caption("ユーザー自身のAPIキーを利用するバージョンです (Powered by Gemini 1.5 Pro)")
 
 # --------------------------------------------------
@@ -64,7 +64,6 @@ if "cached_api_key" not in st.session_state:
 with st.sidebar:
     st.header("🔑 APIキーの設定")
     
-    # APIキーの入力欄（パスワード形式で隠す）
     api_key_input = st.text_input(
         "Gemini APIキーを入力してください", 
         value=st.session_state.cached_api_key,
@@ -72,13 +71,29 @@ with st.sidebar:
         placeholder="AIzaSy..."
     )
     
-    # チェックボックスでキャッシュ（セッション保持）を管理
-    save_key_checkbox = st.checkbox("APIキーをこのブラウザタブに記憶する", value=True)
+    save_key_checkbox = st.checkbox("APIキーをこのブラウザに記憶する", value=True)
     
     if save_key_checkbox:
         st.session_state.cached_api_key = api_key_input
     else:
         st.session_state.cached_api_key = ""
+
+    # 初心者向けのAPIキー取得手順（折りたたみ）
+    with st.expander("🔰 APIキーの取得方法（無料）", expanded=False):
+        st.markdown("""
+        **「APIキー」** とは、AIを使うための **自分専用の合言葉（パスワード）** のようなものです。
+        Googleアカウントを持っていれば、以下の手順で**誰でも無料で**取得できます。
+
+        1. [Google AI Studio](https://aistudio.google.com/app/apikey) にアクセスします。
+        2. お持ちの **Googleアカウントでログイン** します。
+           （利用規約の画面が出たら、チェックを入れて「Continue」を押してください）
+        3. 画面の左上あたりにある青いボタン **「Create API key」** をクリックします。
+        4. 続いて **「Create API key in new project」** というボタンをクリックします。
+        5. しばらく待つと、`AIzaSy...` から始まる長い文字列が表示されます。これがあなたのAPIキーです！
+        6. **「Copy」** ボタンを押してキーをコピーし、左側の入力欄に貼り付けてください。
+
+        ⚠️ **注意**: このキーは自分専用のパスワードと同じです。他人に教えたり、SNSに公開したりしないようご注意ください。
+        """)
 
     st.divider()
 
@@ -98,8 +113,8 @@ with st.sidebar:
 # 5. アプリのメインロジック（APIキーがない場合はここでストップ）
 # --------------------------------------------------
 if not api_key_input:
-    st.warning("👈 左側のサイドバーに、ご自身のGemini APIキーを入力してください。\n\nAPIキーは[Google AI Studio](https://aistudio.google.com/app/apikey)から無料で取得できます。")
-    st.stop() # APIキーが入力されるまでこれ以降の処理を停止
+    st.info("👈 左側のサイドバーに、ご自身のGemini APIキーを入力してスタートしてください。\n\n※取得方法は左側の「🔰 APIキーの取得方法（無料）」を開いて確認できます。")
+    st.stop()
 
 # APIクライアントの初期化（ユーザーのキーを使用）
 client = genai.Client(api_key=api_key_input)
@@ -151,7 +166,7 @@ if submit_button and (new_problem_input.strip() or uploaded_file is not None):
             if e.code == 429:
                 st.error("⚠️ **APIの利用制限に達しました。** 少し時間を置いてから再度お試しください。")
             elif e.code == 400 and "API key not valid" in str(e):
-                st.error("⚠️ **無効なAPIキーです。** 入力したキーが正しいか確認してください。")
+                st.error("⚠️ **無効なAPIキーです。** 取得したキーが正しく貼り付けられているか確認してください。")
             else:
                 st.error(f"⚠️ APIエラーが発生しました: {e.message}")
         except Exception as e:
