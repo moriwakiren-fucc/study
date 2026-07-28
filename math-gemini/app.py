@@ -36,12 +36,12 @@ SYSTEM_INSTRUCTION = """
 # 2. ページ基本設定
 # --------------------------------------------------
 st.set_page_config(
-    page_title="高校数学・大学受験AIチューター",
+    page_title="数学解説Gemini",
     page_icon="📐",
     layout="wide"
 )
 
-st.title("📐 高校数学・大学受験AIチューター")
+st.title("📐 数学解説Gemini")
 st.caption("難関大目指す理系高3生のための解法・解説ジェネレーター (Powered by Gemini 1.5 Pro)")
 
 # --------------------------------------------------
