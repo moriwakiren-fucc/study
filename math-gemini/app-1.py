@@ -42,7 +42,7 @@ st.set_page_config(
 )
 
 st.title("📐 数学解説Gemini")
-st.caption("ユーザー自身のAPIキーを利用するバージョンです (Powered by Gemini 1.5 Pro)")
+st.caption("ユーザー自身のAPIキーを利用するバージョンです (Powered by Gemini 3.1 Pro)")
 
 # --------------------------------------------------
 # 3. セッション状態の初期化
@@ -78,7 +78,6 @@ with st.sidebar:
     else:
         st.session_state.cached_api_key = ""
 
-    # 初心者向けのAPIキー取得手順（折りたたみ）
     with st.expander("🔰 APIキーの取得方法（無料）", expanded=False):
         st.markdown("""
         **「APIキー」** とは、AIを使うための **自分専用の合言葉（パスワード）** のようなものです。
@@ -86,12 +85,11 @@ with st.sidebar:
 
         1. [Google AI Studio](https://aistudio.google.com/app/apikey) にアクセスします。
         2. お持ちの **Googleアカウントでログイン** します。
-           （利用規約の画面が出たら、チェックを入れて「続行」を押してください）
-        3. 画面の右上あたりにある青いボタン **「APIキーを作成」** をクリックします。
-        4. 続いて上から2つ目の枠 **「インポートしたプロジェクトを選択」** → **「新しいプロジェクト」** の順にクリックします。
-        5. 「プロジェクトの名前」を入力します。`Gemmath`などでよいと思います。入力後、「プロジェクトを作成」を押します。
-        6. **「キーを作成」** を押してしばらく待つと **「APIキー」** という長い文字列が表示されます。
-        6. 文字列の横にある **コピーボタン** を押してキーをコピーし、左側の入力欄に貼り付けてください。
+           （利用規約の画面が出たら、チェックを入れて「Continue」を押してください）
+        3. 画面の左上あたりにある青いボタン **「Create API key」** をクリックします。
+        4. 続いて **「Create API key in new project」** というボタンをクリックします。
+        5. しばらく待つと、`AIzaSy...` から始まる長い文字列が表示されます。これがあなたのAPIキーです！
+        6. **「Copy」** ボタンを押してキーをコピーし、左側の入力欄に貼り付けてください。
 
         ⚠️ **注意**: このキーは自分専用のパスワードと同じです。他人に教えたり、SNSに公開したりしないようご注意ください。
         """)
@@ -101,7 +99,8 @@ with st.sidebar:
     st.header("📝 新しい問題を解く")
     st.write("テキスト入力、または画像のアップロードで問題を指定してください。")
     
-    with st.form(key="new_problem_form", clear_on_submit=True):
+    # 変更点①: clear_on_submit=False に変更し、送信後も入力内容を維持する
+    with st.form(key="new_problem_form", clear_on_submit=False):
         uploaded_file = st.file_uploader("📸 問題の画像（任意）", type=["png", "jpg", "jpeg"])
         new_problem_input = st.text_area(
             "✍️ 数学の問題（補足など）",
@@ -114,7 +113,7 @@ with st.sidebar:
 # 5. アプリのメインロジック（APIキーがない場合はここでストップ）
 # --------------------------------------------------
 if not api_key_input:
-    st.info("↖️ サイドバー》を開いて（既に開かれている場合もあります）、ご自身のGemini APIキーを入力してスタートしてください。\n\n※取得方法は左側の「🔰 APIキーの取得方法（無料）」を開いて確認できます。")
+    st.info("👈 左側のサイドバーに、ご自身のGemini APIキーを入力してスタートしてください。\n\n※取得方法は左側の「🔰 APIキーの取得方法（無料）」を開いて確認できます。")
     st.stop()
 
 # APIクライアントの初期化（ユーザーのキーを使用）
@@ -131,7 +130,8 @@ if submit_button and (new_problem_input.strip() or uploaded_file is not None):
     st.session_state.messages = []
     
     st.session_state.chat = client.chats.create(
-        model="gemini-1.5-pro",
+        # 変更点②: モデル名を gemini-3.1-pro-preview に修正
+        model="gemini-3.1-pro-preview",
         config=types.GenerateContentConfig(
             system_instruction=SYSTEM_INSTRUCTION,
             temperature=0.2, 
