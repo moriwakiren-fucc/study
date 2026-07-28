@@ -1,6 +1,7 @@
 import streamlit as st
 from google import genai
 from google.genai import types
+from google.genai import errors
 from PIL import Image
 
 # --------------------------------------------------
@@ -63,7 +64,6 @@ if "chat" not in st.session_state:
 if "messages" not in st.session_state:
     st.session_state.messages = []
 
-# 画像とテキストの両方を保持できるように変数を分割
 if "current_problem_text" not in st.session_state:
     st.session_state.current_problem_text = ""
     
@@ -87,17 +87,14 @@ with st.sidebar:
         submit_button = st.form_submit_button("この問題を解説させる")
 
     if submit_button and (new_problem_input.strip() or uploaded_file is not None):
-        # 画像の読み込み処理
         img = None
         if uploaded_file is not None:
             img = Image.open(uploaded_file)
             
-        # 新しい問題が送信されたら、セッションを初期化
         st.session_state.current_problem_text = new_problem_input.strip()
         st.session_state.current_problem_image = img
         st.session_state.messages = []
         
-        # Gemini Clientのチャットセッションを作成
         st.session_state.chat = client.chats.create(
             model="gemini-1.5-pro",
             config=types.GenerateContentConfig(
@@ -106,35 +103,38 @@ with st.sidebar:
             )
         )
         
-        # Geminiへ送るプロンプトの構成
         initial_prompt_text = "以下の問題を指示通りの手順で解説してください。\n\n"
         if st.session_state.current_problem_text:
             initial_prompt_text += f"【テキスト・指示】\n{st.session_state.current_problem_text}\n"
         if img:
             initial_prompt_text += "【画像】\n添付した画像の問題を解いてください。"
             
-        # APIへ送信するリスト（テキストと画像オブジェクトを同時に渡す）
         prompt_parts = [initial_prompt_text]
         if img is not None:
             prompt_parts.append(img)
         
-        # ユーザー側入力メッセージとしてUI描画用に記録
         st.session_state.messages.append({
             "role": "user", 
             "content": initial_prompt_text,
             "image": img
         })
         
-        # Geminiに送信して回答を取得
         with st.spinner("AIが解答と解説を生成中です...（画像解析を含む場合、少し時間がかかります）"):
-            response = st.session_state.chat.send_message(prompt_parts)
-            st.session_state.messages.append({
-                "role": "assistant", 
-                "content": response.text,
-                "image": None
-            })
-            
-        st.rerun()
+            try:
+                response = st.session_state.chat.send_message(prompt_parts)
+                st.session_state.messages.append({
+                    "role": "assistant", 
+                    "content": response.text,
+                    "image": None
+                })
+                st.rerun()
+            except errors.APIError as e:
+                if e.code == 429:
+                    st.error("⚠️ **APIの利用制限に達しました。**\n1分間に2回、または1日50回の無料枠上限を超過した可能性があります。1分間（または明日まで）待ってから再度お試しください。")
+                else:
+                    st.error(f"⚠️ APIエラーが発生しました: {e.message}")
+            except Exception as e:
+                st.error(f"⚠️ 予期せぬエラーが発生しました: {e}")
 
 # --------------------------------------------------
 # 6. メイン画面の表示とチャット機能
@@ -142,27 +142,27 @@ with st.sidebar:
 if not st.session_state.current_problem_text and st.session_state.current_problem_image is None:
     st.info("👈 左側のサイドバーから数学の問題を入力、またはアップロードしてください。")
 else:
-    # 進行中の問題情報（固定表示ではなく、チャット履歴の最初として表示されます）
-    
-    # これまでのやり取り（解説 + 追加の質疑応答）を表示
     for message in st.session_state.messages:
         with st.chat_message(message["role"]):
-            # 画像が含まれている場合は表示
             if message.get("image") is not None:
                 st.image(message["image"], caption="アップロードされた問題", width=400)
-            # テキスト部分を表示
             st.markdown(message["content"])
 
-    # この問題に対する追加質問チャットUI
     if prompt := st.chat_input("この解説について質問や気になる点があれば入力してください..."):
-        # 画面にユーザーメッセージを表示＆記録
         st.session_state.messages.append({"role": "user", "content": prompt, "image": None})
         with st.chat_message("user"):
             st.markdown(prompt)
 
-        # Geminiから回答を取得
         with st.chat_message("assistant"):
             with st.spinner("思考中..."):
-                response = st.session_state.chat.send_message(prompt)
-                st.markdown(response.text)
-                st.session_state.messages.append({"role": "assistant", "content": response.text, "image": None})
+                try:
+                    response = st.session_state.chat.send_message(prompt)
+                    st.markdown(response.text)
+                    st.session_state.messages.append({"role": "assistant", "content": response.text, "image": None})
+                except errors.APIError as e:
+                    if e.code == 429:
+                        st.error("⚠️ **APIの利用制限に達しました。**\n1分間に2回、または1日50回の無料枠上限を超過した可能性があります。少し時間を置いてから再度お試しください。")
+                    else:
+                        st.error(f"⚠️ APIエラーが発生しました: {e.message}")
+                except Exception as e:
+                    st.error(f"⚠️ 予期せぬエラーが発生しました: {e}")
