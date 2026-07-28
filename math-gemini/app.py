@@ -96,7 +96,7 @@ with st.sidebar:
         st.session_state.messages = []
         
         st.session_state.chat = client.chats.create(
-            model="gemini-3.1-pro", # 👈 "-latest" を付けるか、最新のモデル名に変更
+            model="gemini-3.1-pro-preview", # 👈 "-latest" を付けるか、最新のモデル名に変更
             config=types.GenerateContentConfig(
                 system_instruction=SYSTEM_INSTRUCTION,
                 temperature=0.2,
