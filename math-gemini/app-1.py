@@ -74,7 +74,7 @@ with st.sidebar:
     save_key_checkbox = st.checkbox("APIキーをこのブラウザに記憶する", value=True)
     what_lang = st.selectbox(
         "Geminiのモデル名を選択",
-        ("gemini-3.1-pro-preview","gemini-3.5-flash",gemini-3.1-flash-lite,"gemini-3-flash-preview"),
+        ("gemini-3.1-pro-preview","gemini-3.5-flash","gemini-3.1-flash-lite","gemini-3-flash-preview"),
         help="上の選択肢ほど性能が良いですが、上の選択肢ほどすぐ使えなくなります。"
     )
     model_name = st.text_input("Geminiのモデル名を入力してください")
