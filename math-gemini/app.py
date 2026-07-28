@@ -1,9 +1,10 @@
 import streamlit as st
 from google import genai
 from google.genai import types
+from PIL import Image
 
 # --------------------------------------------------
-# 1. システムプロンプトの設定（Gemの事前指示に相当）
+# 1. システムプロンプトの設定
 # --------------------------------------------------
 SYSTEM_INSTRUCTION = """
 ## 質問者の状況
@@ -56,80 +57,106 @@ client = genai.Client(api_key=api_key)
 # --------------------------------------------------
 # 4. セッション状態の初期化
 # --------------------------------------------------
-# チャットインスタンス（履歴保持用）
 if "chat" not in st.session_state:
     st.session_state.chat = None
 
-# UI描画用のメッセージ履歴
 if "messages" not in st.session_state:
     st.session_state.messages = []
 
-# 現在解説中の「メイン問題」
-if "current_problem" not in st.session_state:
-    st.session_state.current_problem = None
+# 画像とテキストの両方を保持できるように変数を分割
+if "current_problem_text" not in st.session_state:
+    st.session_state.current_problem_text = ""
+    
+if "current_problem_image" not in st.session_state:
+    st.session_state.current_problem_image = None
 
 # --------------------------------------------------
 # 5. サイドバー：新しく問題をセット（リセット機能）
 # --------------------------------------------------
 with st.sidebar:
     st.header("📝 新しい問題を解く")
-    st.write("別の問題を解き直したい場合は、ここから入力してください。これまでの質問チャットはリセットされます。")
+    st.write("テキスト入力、または画像のアップロードで問題を指定してください。両方入力することも可能です。")
     
     with st.form(key="new_problem_form", clear_on_submit=True):
+        uploaded_file = st.file_uploader("📸 問題の画像（任意）", type=["png", "jpg", "jpeg"])
         new_problem_input = st.text_area(
-            "数学の問題を入力してください",
-            height=200,
-            placeholder="例: $x^2 + y^2 = 4$ と $y = x + k$ が異なる2点で交わるような定数 $k$ の値の範囲を求めよ。"
+            "✍️ 数学の問題（補足など）",
+            height=150,
+            placeholder="例: 画像の(2)だけを解説してください。\n※画像がある場合は空欄でもOKです。"
         )
         submit_button = st.form_submit_button("この問題を解説させる")
 
-    if submit_button and new_problem_input.strip():
-        # 新しい問題が送信されたら、チャットとセッションを初期化
-        st.session_state.current_problem = new_problem_input.strip()
+    if submit_button and (new_problem_input.strip() or uploaded_file is not None):
+        # 画像の読み込み処理
+        img = None
+        if uploaded_file is not None:
+            img = Image.open(uploaded_file)
+            
+        # 新しい問題が送信されたら、セッションを初期化
+        st.session_state.current_problem_text = new_problem_input.strip()
+        st.session_state.current_problem_image = img
         st.session_state.messages = []
         
-        # Gemini Clientのチャットセッションを作成（システムプロンプト付き）
+        # Gemini Clientのチャットセッションを作成
         st.session_state.chat = client.chats.create(
             model="gemini-1.5-pro",
             config=types.GenerateContentConfig(
                 system_instruction=SYSTEM_INSTRUCTION,
-                temperature=0.2, # 数学のため創造性を低めに設定
+                temperature=0.2, 
             )
         )
         
-        # 最初のプロンプトを構築して自動送信
-        initial_prompt = f"以下の問題を指示通りの手順で解説してください。\n\n【問題】\n{st.session_state.current_problem}"
+        # Geminiへ送るプロンプトの構成
+        initial_prompt_text = "以下の問題を指示通りの手順で解説してください。\n\n"
+        if st.session_state.current_problem_text:
+            initial_prompt_text += f"【テキスト・指示】\n{st.session_state.current_problem_text}\n"
+        if img:
+            initial_prompt_text += "【画像】\n添付した画像の問題を解いてください。"
+            
+        # APIへ送信するリスト（テキストと画像オブジェクトを同時に渡す）
+        prompt_parts = [initial_prompt_text]
+        if img is not None:
+            prompt_parts.append(img)
         
-        # ユーザー側入力メッセージとして記録
-        st.session_state.messages.append({"role": "user", "content": st.session_state.current_problem})
+        # ユーザー側入力メッセージとしてUI描画用に記録
+        st.session_state.messages.append({
+            "role": "user", 
+            "content": initial_prompt_text,
+            "image": img
+        })
         
         # Geminiに送信して回答を取得
-        with st.spinner("AIが解答と解説を生成中です...（1分程度かかる場合があります）"):
-            response = st.session_state.chat.send_message(initial_prompt)
-            st.session_state.messages.append({"role": "assistant", "content": response.text})
+        with st.spinner("AIが解答と解説を生成中です...（画像解析を含む場合、少し時間がかかります）"):
+            response = st.session_state.chat.send_message(prompt_parts)
+            st.session_state.messages.append({
+                "role": "assistant", 
+                "content": response.text,
+                "image": None
+            })
             
         st.rerun()
 
 # --------------------------------------------------
 # 6. メイン画面の表示とチャット機能
 # --------------------------------------------------
-if not st.session_state.current_problem:
-    st.info("👈 左側のサイドバーから数学の問題を入力してください。")
+if not st.session_state.current_problem_text and st.session_state.current_problem_image is None:
+    st.info("👈 左側のサイドバーから数学の問題を入力、またはアップロードしてください。")
 else:
-    # 現在の問題を強調表示
-    st.subheader("📌 解答中の問題")
-    st.info(st.session_state.current_problem)
-    st.divider()
-
+    # 進行中の問題情報（固定表示ではなく、チャット履歴の最初として表示されます）
+    
     # これまでのやり取り（解説 + 追加の質疑応答）を表示
     for message in st.session_state.messages:
         with st.chat_message(message["role"]):
+            # 画像が含まれている場合は表示
+            if message.get("image") is not None:
+                st.image(message["image"], caption="アップロードされた問題", width=400)
+            # テキスト部分を表示
             st.markdown(message["content"])
 
     # この問題に対する追加質問チャットUI
     if prompt := st.chat_input("この解説について質問や気になる点があれば入力してください..."):
         # 画面にユーザーメッセージを表示＆記録
-        st.session_state.messages.append({"role": "user", "content": prompt})
+        st.session_state.messages.append({"role": "user", "content": prompt, "image": None})
         with st.chat_message("user"):
             st.markdown(prompt)
 
@@ -138,4 +165,4 @@ else:
             with st.spinner("思考中..."):
                 response = st.session_state.chat.send_message(prompt)
                 st.markdown(response.text)
-                st.session_state.messages.append({"role": "assistant", "content": response.text})
+                st.session_state.messages.append({"role": "assistant", "content": response.text, "image": None})
