@@ -42,7 +42,7 @@ st.set_page_config(
 )
 
 st.title("📐 数学解説Gemini")
-st.caption("ユーザー自身のAPIキーを利用するバージョンです (Powered by Gemini 3.1 Pro)")
+st.caption("ユーザー自身のAPIキーを利用してGeminiが数学解説を行うWebアプリです")
 
 # --------------------------------------------------
 # 3. セッション状態の初期化
@@ -68,11 +68,16 @@ with st.sidebar:
         "Gemini APIキーを入力してください", 
         value=st.session_state.cached_api_key,
         type="password",
-        placeholder="AIzaSy..."
+        placeholder="あなたのAPIキーを入力"
     )
-    model_name = st.text_input("Geminiのモデル名を入力してください")
     
     save_key_checkbox = st.checkbox("APIキーをこのブラウザに記憶する", value=True)
+    what_lang = st.selectbox(
+        "Geminiのモデル名を選択",
+        ("gemini-3.1-pro-preview","gemini-3.5-flash",gemini-3.1-flash-lite,"gemini-3-flash-preview"),
+        help="上の選択肢ほど性能が良いですが、上の選択肢ほどすぐ使えなくなります。"
+    )
+    model_name = st.text_input("Geminiのモデル名を入力してください")
     
     if save_key_checkbox:
         st.session_state.cached_api_key = api_key_input
