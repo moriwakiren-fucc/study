@@ -70,6 +70,7 @@ with st.sidebar:
         type="password",
         placeholder="AIzaSy..."
     )
+    model_name = st.text_input("Geminiのモデル名を入力してください")
     
     save_key_checkbox = st.checkbox("APIキーをこのブラウザに記憶する", value=True)
     
@@ -129,9 +130,6 @@ if submit_button and (new_problem_input.strip() or uploaded_file is not None):
     st.session_state.current_problem_image = img
     st.session_state.messages = []
 
-    model_name = st.text_input(
-        "Geminiのモデル名を入力してください"
-    )
     st.session_state.chat = client.chats.create(
         # 変更点②: モデル名を gemini-3.1-pro-preview に修正
         model=model_name,
