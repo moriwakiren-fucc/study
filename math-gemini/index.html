@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>📐 数学解説Gemini (APIキー要求版)</title>
     
     <!-- マークダウン解析用ライブラリ -->
@@ -42,7 +42,8 @@
         body {
             margin: 0;
             display: flex;
-            height: 100vh;
+            /* スマホのブラウザバー対策で100dvhを使用 */
+            height: 100dvh;
             color: var(--text-color);
             background-color: var(--bg-color);
             overflow: hidden;
@@ -194,6 +195,7 @@
             display: flex;
             flex-direction: column;
             min-width: 0; /* フレックスアイテムのはみ出し防止 */
+            height: 100dvh; /* ここでも確実に高さを固定 */
         }
 
         .header {
@@ -315,6 +317,8 @@
         .chat-input-wrapper {
             flex-shrink: 0;
             padding: 20px 40px;
+            /* iPhoneのホームインジケーター等と被らないための余白確保 */
+            padding-bottom: calc(20px + env(safe-area-inset-bottom));
             background-color: var(--bg-color);
             border-top: 1px solid var(--border-color);
         }
@@ -355,7 +359,7 @@
         @media (max-width: 768px) {
             .sidebar {
                 position: fixed;
-                height: 100%;
+                height: 100dvh;
                 left: 0;
                 top: 0;
                 transform: translateX(-100%); /* 初期状態は隠す */
@@ -414,15 +418,21 @@
 
         <details>
             <summary>🔰 APIキーの取得方法（無料）</summary>
-            <p><strong>「APIキー」</strong> とは、AIを使うための <strong>自分専用の合言葉（パスワード）</strong> のようなものです。Googleアカウントを持っていれば、以下の手順で<strong>誰でも無料で</strong>取得できます。</p>
+            <p><strong>「APIキー」</strong> とは、AIを使うための <strong>自分専用の合言葉（パスワード）</strong> のようなものです。<br>
+            Googleアカウントを持っていれば、以下の手順で<strong>誰でも無料で</strong>取得できます。</p>
+
             <ol style="padding-left: 20px;">
                 <li><a href="https://aistudio.google.com/app/apikey" target="_blank">Google AI Studio</a> にアクセスします。</li>
-                <li>お持ちの <strong>Googleアカウントでログイン</strong> します。</li>
-                <li>左上あたりの <strong>「Create API key」</strong> をクリックします。</li>
-                <li><strong>「Create API key in new project」</strong> をクリックします。</li>
-                <li>`AIzaSy...` から始まる長い文字列が表示されたら <strong>「Copy」</strong> ボタンを押してコピーし、上の入力欄に貼り付けてください。</li>
+                <li>お持ちの <strong>Googleアカウントでログイン</strong> します。<br>
+                （利用規約の画面が出たら、チェックを入れて「続行」を押してください）</li>
+                <li>画面の右上あたりにある青いボタン <strong>「APIキーを作成」</strong> をクリックします。</li>
+                <li>続いて上から2つ目の枠 <strong>「インポートしたプロジェクトを選択」</strong> → <strong>「新しいプロジェクト」</strong> の順にクリックします。</li>
+                <li>「プロジェクトの名前」を入力します。<code>Gemmath</code>などでよいと思います。入力後、「プロジェクトを作成」を押します。</li>
+                <li><strong>「キーを作成」</strong> を押してしばらく待つと <strong>「APIキー」</strong> という長い文字列が表示されます。</li>
+                <li>文字列の横にある <strong>コピーボタン</strong> を押してキーをコピーし、左側の入力欄に貼り付けてください。</li>
             </ol>
-            <p style="font-size: 0.8rem; color: red;">⚠️ <strong>注意</strong>: このキーは自分専用のパスワードと同じです。他人に教えたりSNSに公開しないようご注意ください。</p>
+
+            <p style="font-size: 0.8rem; color: red;">⚠️ <strong>注意</strong>: このキーは自分専用のパスワードと同じです。他人に教えたり、SNSに公開したりしないようご注意ください。</p>
         </details>
 
         <hr>
@@ -436,9 +446,7 @@
                 <input type="file" id="problem-image" accept="image/png, image/jpeg, image/jpg">
             </div>
             <div class="form-group">
-                <!-- ラベルを変更 -->
                 <label>✍️ 問題を手入力（または画像の補足）</label>
-                <!-- プレースホルダーを変更 -->
                 <textarea id="problem-text" rows="5" placeholder="例: 0<x<π/4におけるsin2x+cos4xの取りうる値の範囲を求めよ。&#10;画像の(2)だけを解説してください。"></textarea>
             </div>
             <button type="submit" class="primary">この問題を解説させる</button>
@@ -677,7 +685,8 @@
             if (!response.ok) {
                 let errorMsg = data.error?.message || response.statusText;
                 if (response.status === 429) {
-                    errorMsg = "APIの利用制限に達しました。 少し時間を置いてから再度お試しください。";
+                    // 変更点: モデルのダウングレードを提案するメッセージに変更
+                    errorMsg = "APIの利用制限に達しました。左側のメニューから「Geminiのモデル名」を下のものに変更するか、少し時間を置いてから再度お試しください。";
                 } else if (response.status === 400 && errorMsg.includes("API key not valid")) {
                     errorMsg = "無効なAPIキーです。 取得したキーが正しく貼り付けられているか確認してください。";
                 }
