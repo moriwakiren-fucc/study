@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>📐 数学解説Gemini (APIキー要求版)</title>
     
     <!-- マークダウン解析用ライブラリ -->
@@ -42,7 +42,7 @@
         body {
             margin: 0;
             display: flex;
-            height: 100vh;
+            height: 100dvh;
             color: var(--text-color);
             background-color: var(--bg-color);
             overflow: hidden;
@@ -52,10 +52,13 @@
         .sidebar {
             width: 330px;
             background-color: var(--sidebar-bg);
-            padding: 20px;
+            padding: 100px 20px;
             overflow-y: auto;
             border-right: 1px solid var(--border-color);
             flex-shrink: 0;
+            position: relative;
+            z-index: 1000;
+            transition: transform 0.3s ease;
         }
 
         .sidebar h2 {
@@ -160,30 +163,74 @@
             font-size: 0.85rem;
         }
 
+        .close-sidebar-btn {
+            display: none;
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: none;
+            border: none;
+            font-size: 2rem;
+            color: #666;
+            padding: 0;
+            width: auto;
+            line-height: 1;
+        }
+
+        .sidebar-overlay {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.5);
+            z-index: 999;
+        }
+
         /* ----- メインコンテンツ ----- */
         .main {
             flex-grow: 1;
             display: flex;
             flex-direction: column;
-            position: relative;
+            min-width: 0;
+            height: 100dvh;
         }
 
         .header {
+            flex-shrink: 0;
             padding: 20px 40px;
             border-bottom: 1px solid var(--border-color);
+            display: flex;
+            align-items: center;
+        }
+
+        .menu-btn {
+            display: none;
+            background: none;
+            border: none;
+            font-size: 1.8rem;
+            cursor: pointer;
+            margin-right: 15px;
+            padding: 0;
+            width: auto;
+            color: var(--text-color);
         }
 
         .header h1 {
             margin: 0;
-            font-size: 2rem;
+            font-size: 1.8rem;
         }
 
         .header p {
             margin: 5px 0 0;
             color: #666;
             font-size: 0.9rem;
+            width: 100%;
         }
 
+        #status-area {
+            flex-shrink: 0;
+        }
+
+        /* チャット表示エリア */
         .chat-container {
             flex-grow: 1;
             padding: 20px 40px;
@@ -191,7 +238,6 @@
             display: flex;
             flex-direction: column;
             gap: 20px;
-            padding-bottom: 100px; /* 入力エリアのスペース */
         }
 
         .message {
@@ -263,29 +309,67 @@
             margin-top: 10px;
         }
 
-        /* ----- チャット入力エリア ----- */
+        /* ----- チャット入力エリア (常に下部に固定) ----- */
         .chat-input-wrapper {
-            position: absolute;
-            bottom: 0;
-            left: 0;
-            right: 0;
+            flex-shrink: 0;
             padding: 20px 40px;
-            background: linear-gradient(transparent, var(--bg-color) 20%);
+            padding-bottom: calc(20px + env(safe-area-inset-bottom));
+            background-color: var(--bg-color);
+            border-top: 1px solid var(--border-color);
         }
 
         .chat-input-form {
             display: flex;
+            align-items: flex-end; /* ボタンを下揃えに */
             gap: 10px;
             max-width: 800px;
             margin: 0 auto;
-            position: relative;
         }
 
-        .chat-input-form input {
-            border-radius: 20px;
-            padding: 12px 20px;
-            box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+        /* 変更: textareaのスタイル */
+        .chat-input-form textarea {
+            border-radius: 8px;
+            padding: 12px 15px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
             border: 1px solid var(--border-color);
+            flex-grow: 1;
+            resize: none; /* JSで自動リサイズするため手動変更不可に */
+            font-size: 1rem;
+            line-height: 1.5;
+            min-height: 48px;
+            max-height: 150px;
+            overflow-y: auto;
+            font-family: inherit;
+        }
+
+        /* 変更: 送信ボタン（画像用）のスタイル */
+        .send-btn {
+            background: none;
+            border: none;
+            padding: 0;
+            margin-bottom: 5px; /* テキストのベースラインと視覚的に揃える */
+            cursor: pointer;
+            flex-shrink: 0;
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .send-btn img {
+            width: 28px;
+            height: 28px;
+            transition: 0.2s;
+        }
+
+        .send-btn:not(:disabled):hover img {
+            transform: scale(1.1);
+        }
+
+        .send-btn:disabled img {
+            opacity: 0.3;
+            cursor: not-allowed;
         }
 
         /* ----- ローディングスピナー ----- */
@@ -302,12 +386,44 @@
         }
 
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+        /* =========================================
+           モバイル対応
+           ========================================= */
+        @media (max-width: 768px) {
+            .sidebar {
+                position: fixed;
+                height: 100dvh;
+                left: 0;
+                top: 0;
+                transform: translateX(-100%);
+                width: 280px;
+            }
+            .sidebar.open {
+                transform: translateX(0);
+            }
+            .sidebar-overlay.open {
+                display: block;
+            }
+            .menu-btn { display: block; }
+            .close-sidebar-btn { display: block; }
+            .header, .chat-container, .chat-input-wrapper {
+                padding-left: 20px;
+                padding-right: 20px;
+            }
+            .info-box { margin: 20px; }
+            .header h1 { font-size: 1.4rem; }
+            .header p { font-size: 0.8rem; }
+        }
     </style>
 </head>
 <body>
 
+    <div class="sidebar-overlay" id="sidebar-overlay"></div>
+
     <!-- サイドバー -->
-    <div class="sidebar">
+    <div class="sidebar" id="sidebar">
+        <button class="close-sidebar-btn" id="close-sidebar-btn">&times;</button>
         <h2>🔑 APIキーの設定</h2>
         <div class="form-group">
             <input type="password" id="api-key-input" placeholder="あなたのAPIキーを入力">
@@ -328,15 +444,21 @@
 
         <details>
             <summary>🔰 APIキーの取得方法（無料）</summary>
-            <p><strong>「APIキー」</strong> とは、AIを使うための <strong>自分専用の合言葉（パスワード）</strong> のようなものです。Googleアカウントを持っていれば、以下の手順で<strong>誰でも無料で</strong>取得できます。</p>
+            <p><strong>「APIキー」</strong> とは、AIを使うための <strong>自分専用の合言葉（パスワード）</strong> のようなものです。<br>
+            Googleアカウントを持っていれば、以下の手順で<strong>誰でも無料で</strong>取得できます。</p>
+
             <ol style="padding-left: 20px;">
                 <li><a href="https://aistudio.google.com/app/apikey" target="_blank">Google AI Studio</a> にアクセスします。</li>
-                <li>お持ちの <strong>Googleアカウントでログイン</strong> します。</li>
-                <li>左上あたりの <strong>「Create API key」</strong> をクリックします。</li>
-                <li><strong>「Create API key in new project」</strong> をクリックします。</li>
-                <li>`AIzaSy...` から始まる長い文字列が表示されたら <strong>「Copy」</strong> ボタンを押してコピーし、上の入力欄に貼り付けてください。</li>
+                <li>お持ちの <strong>Googleアカウントでログイン</strong> します。<br>
+                （利用規約の画面が出たら、チェックを入れて「続行」を押してください）</li>
+                <li>画面の右上あたりにある青いボタン <strong>「APIキーを作成」</strong> をクリックします。</li>
+                <li>続いて上から2つ目の枠 <strong>「インポートしたプロジェクトを選択」</strong> → <strong>「新しいプロジェクト」</strong> の順にクリックします。</li>
+                <li>「プロジェクトの名前」を入力します。<code>Gemmath</code>などでよいと思います。入力後、「プロジェクトを作成」を押します。</li>
+                <li><strong>「キーを作成」</strong> を押してしばらく待つと <strong>「APIキー」</strong> という長い文字列が表示されます。</li>
+                <li>文字列の横にある <strong>コピーボタン</strong> を押してキーをコピーし、左側の入力欄に貼り付けてください。</li>
             </ol>
-            <p style="font-size: 0.8rem; color: red;">⚠️ <strong>注意</strong>: このキーは自分専用のパスワードと同じです。他人に教えたりSNSに公開しないようご注意ください。</p>
+
+            <p style="font-size: 0.8rem; color: red;">⚠️ <strong>注意</strong>: このキーは自分専用のパスワードと同じです。他人に教えたり、SNSに公開したりしないようご注意ください。</p>
         </details>
 
         <hr>
@@ -350,8 +472,8 @@
                 <input type="file" id="problem-image" accept="image/png, image/jpeg, image/jpg">
             </div>
             <div class="form-group">
-                <label>✍️ 数学の問題（補足など）</label>
-                <textarea id="problem-text" rows="5" placeholder="例: 画像の(2)だけを解説してください。"></textarea>
+                <label>✍️ 問題を手入力（または画像の補足）</label>
+                <textarea id="problem-text" rows="5" placeholder="例: 0<x<π/4におけるsin2x+cos4xの取りうる値の範囲を求めよ。&#10;画像の(2)だけを解説してください。"></textarea>
             </div>
             <button type="submit" class="primary">この問題を解説させる</button>
         </form>
@@ -360,8 +482,11 @@
     <!-- メインコンテンツ -->
     <div class="main">
         <div class="header">
-            <h1>📐 数学解説Gemini</h1>
-            <p>ユーザー自身のAPIキーを利用してGeminiが数学解説を行うWebアプリです</p>
+            <button class="menu-btn" id="menu-btn">☰</button>
+            <div>
+                <h1>📐 数学解説Gemini</h1>
+                <p>ユーザー自身のAPIキーを利用してGeminiが数学解説を行うWebアプリです</p>
+            </div>
         </div>
 
         <div id="status-area">
@@ -373,18 +498,22 @@
         </div>
 
         <div class="chat-container" id="chat-container" style="display: none;">
-            <!-- チャットメッセージがここに追加されます -->
+            <!-- チャットメッセージ -->
         </div>
 
+        <!-- 変更: 追加質問エリア (Enterで改行、送信は画像ボタン) -->
         <div class="chat-input-wrapper" id="chat-input-wrapper" style="display: none;">
             <form id="chat-input-form" class="chat-input-form">
-                <input type="text" id="chat-input" placeholder="この解説について質問や気になる点があれば入力してください..." disabled>
+                <textarea id="chat-input" rows="1" placeholder="この解説について質問や気になる点があれば入力してください...&#13;&#10;（Enterで改行）" disabled></textarea>
+                <button type="submit" id="chat-send-btn" class="send-btn" disabled title="送信">
+                    <!-- send.png を読み込む -->
+                    <img src="send.png" alt="送信">
+                </button>
             </form>
         </div>
     </div>
 
     <script>
-        // --- 1. システムプロンプトの設定 ---
         const SYSTEM_INSTRUCTION = `
 ## 質問者の状況
 私は、高校数学の教科書内容を全て学習し終えた、難関大学への合格を目指す理系の高校3年生です。
@@ -410,26 +539,46 @@
 - 「解法の必然性」は、別の問題を解くときに再現性があるように、丁寧に詳しく書いてください。
 `;
 
-        // --- 状態管理変数 ---
-        let chatHistory = []; // APIに送信するための履歴形式
-        let currentImageBase64 = null;
-        let currentImageMimeType = null;
+        let chatHistory = []; 
 
-        // --- DOM要素の取得 ---
+        const sidebar = document.getElementById('sidebar');
+        const sidebarOverlay = document.getElementById('sidebar-overlay');
+        const menuBtn = document.getElementById('menu-btn');
+        const closeSidebarBtn = document.getElementById('close-sidebar-btn');
+
         const apiKeyInput = document.getElementById('api-key-input');
         const saveKeyCheckbox = document.getElementById('save-key-checkbox');
         const modelSelect = document.getElementById('model-select');
         const newProblemForm = document.getElementById('new-problem-form');
         const problemImageInput = document.getElementById('problem-image');
         const problemTextInput = document.getElementById('problem-text');
+        
         const statusArea = document.getElementById('status-area');
         const initialInfo = document.getElementById('initial-info');
         const chatContainer = document.getElementById('chat-container');
         const chatInputWrapper = document.getElementById('chat-input-wrapper');
         const chatInputForm = document.getElementById('chat-input-form');
         const chatInput = document.getElementById('chat-input');
+        const chatSendBtn = document.getElementById('chat-send-btn');
 
-        // --- 初期化処理 ---
+        function openSidebar() {
+            sidebar.classList.add('open');
+            sidebarOverlay.classList.add('open');
+        }
+        function closeSidebar() {
+            sidebar.classList.remove('open');
+            sidebarOverlay.classList.remove('open');
+        }
+        menuBtn.addEventListener('click', openSidebar);
+        closeSidebarBtn.addEventListener('click', closeSidebar);
+        sidebarOverlay.addEventListener('click', closeSidebar);
+
+        // 変更: textareaの自動リサイズ
+        chatInput.addEventListener('input', function() {
+            this.style.height = 'auto';
+            this.style.height = Math.min(this.scrollHeight, 150) + 'px';
+        });
+
         window.onload = () => {
             const savedKey = localStorage.getItem('gemini_api_key');
             if (savedKey) {
@@ -461,7 +610,6 @@
             }
         }
 
-        // --- ユーティリティ ---
         function fileToBase64(file) {
             return new Promise((resolve, reject) => {
                 const reader = new FileReader();
@@ -477,16 +625,21 @@
             });
         }
 
-        function renderMarkdownAndMath(text, containerElement) {
-            // marked.jsでMarkdownをHTMLに変換
+        function renderMarkdownAndMath(text, containerElement, onComplete) {
             containerElement.innerHTML = marked.parse(text);
-            // MathJaxで数式をレンダリング
             if (window.MathJax) {
-                MathJax.typesetPromise([containerElement]).catch((err) => console.log(err.message));
+                MathJax.typesetPromise([containerElement]).then(() => {
+                    if (onComplete) onComplete();
+                }).catch((err) => {
+                    console.log(err.message);
+                    if (onComplete) onComplete();
+                });
+            } else {
+                if (onComplete) onComplete();
             }
         }
 
-        function appendMessageToUI(role, contentText, imageUrl = null) {
+        function appendMessageToUI(role, contentText, imageUrl = null, scrollToTop = false) {
             const msgDiv = document.createElement('div');
             msgDiv.className = `message ${role}`;
             
@@ -505,15 +658,24 @@
             }
             
             const textDiv = document.createElement('div');
-            renderMarkdownAndMath(contentText, textDiv);
-            contentDiv.appendChild(textDiv);
             
+            renderMarkdownAndMath(contentText, textDiv, () => {
+                if (scrollToTop) {
+                    msgDiv.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                } else {
+                    chatContainer.scrollTop = chatContainer.scrollHeight;
+                }
+            });
+            
+            contentDiv.appendChild(textDiv);
             msgDiv.appendChild(avatar);
             msgDiv.appendChild(contentDiv);
             chatContainer.appendChild(msgDiv);
             
-            // スクロールを下へ
-            chatContainer.scrollTop = chatContainer.scrollHeight;
+            if (!scrollToTop) {
+                chatContainer.scrollTop = chatContainer.scrollHeight;
+            }
+
             return msgDiv;
         }
 
@@ -525,7 +687,6 @@
             chatContainer.scrollTop = chatContainer.scrollHeight;
         }
 
-        // --- API通信処理 ---
         async function callGeminiAPI() {
             const apiKey = apiKeyInput.value.trim();
             const model = modelSelect.value;
@@ -548,7 +709,7 @@
             if (!response.ok) {
                 let errorMsg = data.error?.message || response.statusText;
                 if (response.status === 429) {
-                    errorMsg = "APIの利用制限に達しました。 少し時間を置いてから再度お試しください。";
+                    errorMsg = "APIの利用制限に達しました。左側のメニューから「Geminiのモデル名」を下のものに変更するか、少し時間を置いてから再度お試しください。";
                 } else if (response.status === 400 && errorMsg.includes("API key not valid")) {
                     errorMsg = "無効なAPIキーです。 取得したキーが正しく貼り付けられているか確認してください。";
                 }
@@ -562,7 +723,6 @@
             }
         }
 
-        // --- 新しい問題を解く (サイドバーフォーム) ---
         newProblemForm.addEventListener('submit', async (e) => {
             e.preventDefault();
             const apiKey = apiKeyInput.value.trim();
@@ -582,13 +742,17 @@
                 return;
             }
 
-            // 初期化
+            if (window.innerWidth <= 768) {
+                closeSidebar();
+            }
+
             chatHistory = [];
             chatContainer.innerHTML = '';
             statusArea.style.display = 'none';
             chatContainer.style.display = 'flex';
             chatInputWrapper.style.display = 'block';
             chatInput.disabled = true;
+            chatSendBtn.disabled = true;
 
             let initialPromptText = "以下の問題を指示通りの手順で解説してください。\n\n";
             if (textInput) {
@@ -613,49 +777,51 @@
                     displayImageUrl = fileData.dataUrl;
                 }
 
-                // ユーザーメッセージの記録と表示
                 chatHistory.push({ role: "user", parts: parts });
-                appendMessageToUI('user', initialPromptText, displayImageUrl);
+                appendMessageToUI('user', initialPromptText, displayImageUrl, false);
 
-                // ローディング表示
                 const loadingMsg = document.createElement('div');
                 loadingMsg.className = 'message assistant';
                 loadingMsg.innerHTML = `<div class="avatar">✨</div><div class="message-content"><div class="spinner"></div> AIが解答と解説を生成中です...</div>`;
                 chatContainer.appendChild(loadingMsg);
                 chatContainer.scrollTop = chatContainer.scrollHeight;
 
-                // API呼び出し
                 const responseText = await callGeminiAPI();
 
-                // ローディング消去＆結果表示
                 chatContainer.removeChild(loadingMsg);
                 chatHistory.push({ role: "model", parts: [{ text: responseText }] });
-                appendMessageToUI('assistant', responseText);
+                appendMessageToUI('assistant', responseText, null, true);
+
+                // 変更: 成功時に問題入力欄（テキスト・画像）をクリアする
+                problemTextInput.value = '';
+                problemImageInput.value = '';
 
             } catch (error) {
                 if (chatContainer.lastChild && chatContainer.lastChild.innerHTML.includes("生成中")) {
                     chatContainer.removeChild(chatContainer.lastChild);
                 }
                 showError(error.message);
-                // 失敗した場合は履歴からユーザーの発言を取り消す
                 chatHistory.pop();
             } finally {
                 chatInput.disabled = false;
+                chatSendBtn.disabled = false;
                 chatInput.focus();
             }
         });
 
-        // --- フォローアップチャット (メインエリア下部) ---
         chatInputForm.addEventListener('submit', async (e) => {
             e.preventDefault();
             const prompt = chatInput.value.trim();
             if (!prompt) return;
 
+            // 変更: textareaの中身と高さをリセットし、ボタンを無効化
             chatInput.value = '';
+            chatInput.style.height = 'auto';
             chatInput.disabled = true;
+            chatSendBtn.disabled = true;
 
             chatHistory.push({ role: "user", parts: [{ text: prompt }] });
-            appendMessageToUI('user', prompt);
+            appendMessageToUI('user', prompt, null, false);
 
             const loadingMsg = document.createElement('div');
             loadingMsg.className = 'message assistant';
@@ -667,19 +833,19 @@
                 const responseText = await callGeminiAPI();
                 chatContainer.removeChild(loadingMsg);
                 chatHistory.push({ role: "model", parts: [{ text: responseText }] });
-                appendMessageToUI('assistant', responseText);
+                appendMessageToUI('assistant', responseText, null, true);
             } catch (error) {
-                chatContainer.removeChild(loadingMsg);
+                if (chatContainer.lastChild && chatContainer.lastChild.innerHTML.includes("思考中")) {
+                    chatContainer.removeChild(chatContainer.lastChild);
+                }
                 showError(error.message);
-                chatHistory.pop(); // エラー時は履歴から削除
+                chatHistory.pop();
             } finally {
                 chatInput.disabled = false;
+                chatSendBtn.disabled = false;
                 chatInput.focus();
             }
         });
-
-        // 初期表示チェック
-        checkInitialState();
     </script>
 </body>
 </html>
