@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>📐 数学解説Gemini (APIキー要求版)</title>
     
     <!-- マークダウン解析用ライブラリ -->
@@ -42,8 +42,7 @@
         body {
             margin: 0;
             display: flex;
-            /* スマホのブラウザバー対策で100dvhを使用 */
-            height: 100dvh;
+            height: 100vh;
             color: var(--text-color);
             background-color: var(--bg-color);
             overflow: hidden;
@@ -53,14 +52,10 @@
         .sidebar {
             width: 330px;
             background-color: var(--sidebar-bg);
-            /* 指定：上下100pxには何も書かない */
-            padding: 100px 20px;
+            padding: 20px;
             overflow-y: auto;
             border-right: 1px solid var(--border-color);
             flex-shrink: 0;
-            position: relative;
-            z-index: 1000;
-            transition: transform 0.3s ease;
         }
 
         .sidebar h2 {
@@ -165,76 +160,30 @@
             font-size: 0.85rem;
         }
 
-        /* モバイル用サイドバー閉じるボタン */
-        .close-sidebar-btn {
-            display: none;
-            position: absolute;
-            top: 20px;
-            right: 20px;
-            background: none;
-            border: none;
-            font-size: 2rem;
-            color: #666;
-            padding: 0;
-            width: auto;
-            line-height: 1;
-        }
-
-        /* サイドバー背景の暗幕（モバイル用） */
-        .sidebar-overlay {
-            display: none;
-            position: fixed;
-            top: 0; left: 0; right: 0; bottom: 0;
-            background: rgba(0,0,0,0.5);
-            z-index: 999;
-        }
-
         /* ----- メインコンテンツ ----- */
         .main {
             flex-grow: 1;
             display: flex;
             flex-direction: column;
-            min-width: 0; /* フレックスアイテムのはみ出し防止 */
-            height: 100dvh; /* ここでも確実に高さを固定 */
+            position: relative;
         }
 
         .header {
-            flex-shrink: 0;
             padding: 20px 40px;
             border-bottom: 1px solid var(--border-color);
-            display: flex;
-            align-items: center;
-        }
-
-        .menu-btn {
-            display: none;
-            background: none;
-            border: none;
-            font-size: 1.8rem;
-            cursor: pointer;
-            margin-right: 15px;
-            padding: 0;
-            width: auto;
-            color: var(--text-color);
         }
 
         .header h1 {
             margin: 0;
-            font-size: 1.8rem;
+            font-size: 2rem;
         }
 
         .header p {
             margin: 5px 0 0;
             color: #666;
             font-size: 0.9rem;
-            width: 100%;
         }
 
-        #status-area {
-            flex-shrink: 0;
-        }
-
-        /* チャット表示エリア */
         .chat-container {
             flex-grow: 1;
             padding: 20px 40px;
@@ -242,6 +191,7 @@
             display: flex;
             flex-direction: column;
             gap: 20px;
+            padding-bottom: 100px; /* 入力エリアのスペース */
         }
 
         .message {
@@ -313,14 +263,14 @@
             margin-top: 10px;
         }
 
-        /* ----- チャット入力エリア (常に下部に固定) ----- */
+        /* ----- チャット入力エリア ----- */
         .chat-input-wrapper {
-            flex-shrink: 0;
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
             padding: 20px 40px;
-            /* iPhoneのホームインジケーター等と被らないための余白確保 */
-            padding-bottom: calc(20px + env(safe-area-inset-bottom));
-            background-color: var(--bg-color);
-            border-top: 1px solid var(--border-color);
+            background: linear-gradient(transparent, var(--bg-color) 20%);
         }
 
         .chat-input-form {
@@ -328,14 +278,14 @@
             gap: 10px;
             max-width: 800px;
             margin: 0 auto;
+            position: relative;
         }
 
         .chat-input-form input {
-            border-radius: 8px;
-            padding: 15px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+            border-radius: 20px;
+            padding: 12px 20px;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.1);
             border: 1px solid var(--border-color);
-            flex-grow: 1;
         }
 
         /* ----- ローディングスピナー ----- */
@@ -352,52 +302,12 @@
         }
 
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-
-        /* =========================================
-           モバイル対応 (画面幅が狭い場合)
-           ========================================= */
-        @media (max-width: 768px) {
-            .sidebar {
-                position: fixed;
-                height: 100dvh;
-                left: 0;
-                top: 0;
-                transform: translateX(-100%); /* 初期状態は隠す */
-                width: 280px;
-            }
-            .sidebar.open {
-                transform: translateX(0); /* クラス追加で表示 */
-            }
-            .sidebar-overlay.open {
-                display: block;
-            }
-            .menu-btn {
-                display: block; /* ハンバーガーメニューを表示 */
-            }
-            .close-sidebar-btn {
-                display: block; /* サイドバー内の×ボタンを表示 */
-            }
-            .header, .chat-container, .chat-input-wrapper {
-                padding-left: 20px;
-                padding-right: 20px;
-            }
-            .info-box {
-                margin: 20px;
-            }
-            /* ヘッダーの文字を少し小さく */
-            .header h1 { font-size: 1.4rem; }
-            .header p { font-size: 0.8rem; }
-        }
     </style>
 </head>
 <body>
 
-    <!-- モバイル用サイドバーの背景暗幕 -->
-    <div class="sidebar-overlay" id="sidebar-overlay"></div>
-
     <!-- サイドバー -->
-    <div class="sidebar" id="sidebar">
-        <button class="close-sidebar-btn" id="close-sidebar-btn">&times;</button>
+    <div class="sidebar">
         <h2>🔑 APIキーの設定</h2>
         <div class="form-group">
             <input type="password" id="api-key-input" placeholder="あなたのAPIキーを入力">
@@ -418,21 +328,15 @@
 
         <details>
             <summary>🔰 APIキーの取得方法（無料）</summary>
-            <p><strong>「APIキー」</strong> とは、AIを使うための <strong>自分専用の合言葉（パスワード）</strong> のようなものです。<br>
-            Googleアカウントを持っていれば、以下の手順で<strong>誰でも無料で</strong>取得できます。</p>
-
+            <p><strong>「APIキー」</strong> とは、AIを使うための <strong>自分専用の合言葉（パスワード）</strong> のようなものです。Googleアカウントを持っていれば、以下の手順で<strong>誰でも無料で</strong>取得できます。</p>
             <ol style="padding-left: 20px;">
                 <li><a href="https://aistudio.google.com/app/apikey" target="_blank">Google AI Studio</a> にアクセスします。</li>
-                <li>お持ちの <strong>Googleアカウントでログイン</strong> します。<br>
-                （利用規約の画面が出たら、チェックを入れて「続行」を押してください）</li>
-                <li>画面の右上あたりにある青いボタン <strong>「APIキーを作成」</strong> をクリックします。</li>
-                <li>続いて上から2つ目の枠 <strong>「インポートしたプロジェクトを選択」</strong> → <strong>「新しいプロジェクト」</strong> の順にクリックします。</li>
-                <li>「プロジェクトの名前」を入力します。<code>Gemmath</code>などでよいと思います。入力後、「プロジェクトを作成」を押します。</li>
-                <li><strong>「キーを作成」</strong> を押してしばらく待つと <strong>「APIキー」</strong> という長い文字列が表示されます。</li>
-                <li>文字列の横にある <strong>コピーボタン</strong> を押してキーをコピーし、左側の入力欄に貼り付けてください。</li>
+                <li>お持ちの <strong>Googleアカウントでログイン</strong> します。</li>
+                <li>左上あたりの <strong>「Create API key」</strong> をクリックします。</li>
+                <li><strong>「Create API key in new project」</strong> をクリックします。</li>
+                <li>`AIzaSy...` から始まる長い文字列が表示されたら <strong>「Copy」</strong> ボタンを押してコピーし、上の入力欄に貼り付けてください。</li>
             </ol>
-
-            <p style="font-size: 0.8rem; color: red;">⚠️ <strong>注意</strong>: このキーは自分専用のパスワードと同じです。他人に教えたり、SNSに公開したりしないようご注意ください。</p>
+            <p style="font-size: 0.8rem; color: red;">⚠️ <strong>注意</strong>: このキーは自分専用のパスワードと同じです。他人に教えたりSNSに公開しないようご注意ください。</p>
         </details>
 
         <hr>
@@ -446,8 +350,8 @@
                 <input type="file" id="problem-image" accept="image/png, image/jpeg, image/jpg">
             </div>
             <div class="form-group">
-                <label>✍️ 問題を手入力（または画像の補足）</label>
-                <textarea id="problem-text" rows="5" placeholder="例: 0<x<π/4におけるsin2x+cos4xの取りうる値の範囲を求めよ。&#10;画像の(2)だけを解説してください。"></textarea>
+                <label>✍️ 数学の問題（補足など）</label>
+                <textarea id="problem-text" rows="5" placeholder="例: 画像の(2)だけを解説してください。"></textarea>
             </div>
             <button type="submit" class="primary">この問題を解説させる</button>
         </form>
@@ -456,12 +360,8 @@
     <!-- メインコンテンツ -->
     <div class="main">
         <div class="header">
-            <!-- モバイル用ハンバーガーメニュー -->
-            <button class="menu-btn" id="menu-btn">☰</button>
-            <div>
-                <h1>📐 数学解説Gemini</h1>
-                <p>ユーザー自身のAPIキーを利用してGeminiが数学解説を行うWebアプリです</p>
-            </div>
+            <h1>📐 数学解説Gemini</h1>
+            <p>ユーザー自身のAPIキーを利用してGeminiが数学解説を行うWebアプリです</p>
         </div>
 
         <div id="status-area">
@@ -472,12 +372,10 @@
             </div>
         </div>
 
-        <!-- チャットコンテナ -->
         <div class="chat-container" id="chat-container" style="display: none;">
             <!-- チャットメッセージがここに追加されます -->
         </div>
 
-        <!-- 追加質問エリア (Flexレイアウトにより常に下部に配置) -->
         <div class="chat-input-wrapper" id="chat-input-wrapper" style="display: none;">
             <form id="chat-input-form" class="chat-input-form">
                 <input type="text" id="chat-input" placeholder="この解説について質問や気になる点があれば入力してください..." disabled>
@@ -513,40 +411,23 @@
 `;
 
         // --- 状態管理変数 ---
-        let chatHistory = []; 
+        let chatHistory = []; // APIに送信するための履歴形式
+        let currentImageBase64 = null;
+        let currentImageMimeType = null;
 
         // --- DOM要素の取得 ---
-        const sidebar = document.getElementById('sidebar');
-        const sidebarOverlay = document.getElementById('sidebar-overlay');
-        const menuBtn = document.getElementById('menu-btn');
-        const closeSidebarBtn = document.getElementById('close-sidebar-btn');
-
         const apiKeyInput = document.getElementById('api-key-input');
         const saveKeyCheckbox = document.getElementById('save-key-checkbox');
         const modelSelect = document.getElementById('model-select');
         const newProblemForm = document.getElementById('new-problem-form');
         const problemImageInput = document.getElementById('problem-image');
         const problemTextInput = document.getElementById('problem-text');
-        
         const statusArea = document.getElementById('status-area');
         const initialInfo = document.getElementById('initial-info');
         const chatContainer = document.getElementById('chat-container');
         const chatInputWrapper = document.getElementById('chat-input-wrapper');
         const chatInputForm = document.getElementById('chat-input-form');
         const chatInput = document.getElementById('chat-input');
-
-        // --- モバイル用サイドバー開閉制御 ---
-        function openSidebar() {
-            sidebar.classList.add('open');
-            sidebarOverlay.classList.add('open');
-        }
-        function closeSidebar() {
-            sidebar.classList.remove('open');
-            sidebarOverlay.classList.remove('open');
-        }
-        menuBtn.addEventListener('click', openSidebar);
-        closeSidebarBtn.addEventListener('click', closeSidebar);
-        sidebarOverlay.addEventListener('click', closeSidebar);
 
         // --- 初期化処理 ---
         window.onload = () => {
@@ -596,23 +477,16 @@
             });
         }
 
-        // HTMLレンダリングと数式描画を行い、完了後にコールバック(onComplete)を呼ぶ
-        function renderMarkdownAndMath(text, containerElement, onComplete) {
+        function renderMarkdownAndMath(text, containerElement) {
+            // marked.jsでMarkdownをHTMLに変換
             containerElement.innerHTML = marked.parse(text);
+            // MathJaxで数式をレンダリング
             if (window.MathJax) {
-                MathJax.typesetPromise([containerElement]).then(() => {
-                    if (onComplete) onComplete();
-                }).catch((err) => {
-                    console.log(err.message);
-                    if (onComplete) onComplete();
-                });
-            } else {
-                if (onComplete) onComplete();
+                MathJax.typesetPromise([containerElement]).catch((err) => console.log(err.message));
             }
         }
 
-        // scrollToTop: true の場合、生成完了時にそのメッセージの「一番上」へスクロールする
-        function appendMessageToUI(role, contentText, imageUrl = null, scrollToTop = false) {
+        function appendMessageToUI(role, contentText, imageUrl = null) {
             const msgDiv = document.createElement('div');
             msgDiv.className = `message ${role}`;
             
@@ -631,26 +505,15 @@
             }
             
             const textDiv = document.createElement('div');
-            
-            // 数式の描画完了を待ってからスクロール位置を調整する
-            renderMarkdownAndMath(contentText, textDiv, () => {
-                if (scrollToTop) {
-                    msgDiv.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                } else {
-                    chatContainer.scrollTop = chatContainer.scrollHeight;
-                }
-            });
-            
+            renderMarkdownAndMath(contentText, textDiv);
             contentDiv.appendChild(textDiv);
+            
             msgDiv.appendChild(avatar);
             msgDiv.appendChild(contentDiv);
             chatContainer.appendChild(msgDiv);
             
-            // 描画前の一時的なスクロールダウン
-            if (!scrollToTop) {
-                chatContainer.scrollTop = chatContainer.scrollHeight;
-            }
-
+            // スクロールを下へ
+            chatContainer.scrollTop = chatContainer.scrollHeight;
             return msgDiv;
         }
 
@@ -685,8 +548,7 @@
             if (!response.ok) {
                 let errorMsg = data.error?.message || response.statusText;
                 if (response.status === 429) {
-                    // 変更点: モデルのダウングレードを提案するメッセージに変更
-                    errorMsg = "APIの利用制限に達しました。左側のメニューから「Geminiのモデル名」を下のものに変更するか、少し時間を置いてから再度お試しください。";
+                    errorMsg = "APIの利用制限に達しました。 少し時間を置いてから再度お試しください。";
                 } else if (response.status === 400 && errorMsg.includes("API key not valid")) {
                     errorMsg = "無効なAPIキーです。 取得したキーが正しく貼り付けられているか確認してください。";
                 }
@@ -718,11 +580,6 @@
             if (!textInput && !fileInput) {
                 alert("問題のテキストか画像を入力してください。");
                 return;
-            }
-
-            // モバイルの場合は送信したらサイドバーを閉じる
-            if (window.innerWidth <= 768) {
-                closeSidebar();
             }
 
             // 初期化
@@ -758,7 +615,7 @@
 
                 // ユーザーメッセージの記録と表示
                 chatHistory.push({ role: "user", parts: parts });
-                appendMessageToUI('user', initialPromptText, displayImageUrl, false);
+                appendMessageToUI('user', initialPromptText, displayImageUrl);
 
                 // ローディング表示
                 const loadingMsg = document.createElement('div');
@@ -770,16 +627,17 @@
                 // API呼び出し
                 const responseText = await callGeminiAPI();
 
-                // ローディング消去＆結果表示（scrollToTop=true でメッセージ上部に自動スクロール）
+                // ローディング消去＆結果表示
                 chatContainer.removeChild(loadingMsg);
                 chatHistory.push({ role: "model", parts: [{ text: responseText }] });
-                appendMessageToUI('assistant', responseText, null, true);
+                appendMessageToUI('assistant', responseText);
 
             } catch (error) {
                 if (chatContainer.lastChild && chatContainer.lastChild.innerHTML.includes("生成中")) {
                     chatContainer.removeChild(chatContainer.lastChild);
                 }
                 showError(error.message);
+                // 失敗した場合は履歴からユーザーの発言を取り消す
                 chatHistory.pop();
             } finally {
                 chatInput.disabled = false;
@@ -787,7 +645,7 @@
             }
         });
 
-        // --- 追加質問・フォローアップチャット (メインエリア下部) ---
+        // --- フォローアップチャット (メインエリア下部) ---
         chatInputForm.addEventListener('submit', async (e) => {
             e.preventDefault();
             const prompt = chatInput.value.trim();
@@ -797,7 +655,7 @@
             chatInput.disabled = true;
 
             chatHistory.push({ role: "user", parts: [{ text: prompt }] });
-            appendMessageToUI('user', prompt, null, false);
+            appendMessageToUI('user', prompt);
 
             const loadingMsg = document.createElement('div');
             loadingMsg.className = 'message assistant';
@@ -809,14 +667,11 @@
                 const responseText = await callGeminiAPI();
                 chatContainer.removeChild(loadingMsg);
                 chatHistory.push({ role: "model", parts: [{ text: responseText }] });
-                // scrollToTop=true でアシスタントの回答の一番上へスクロール
-                appendMessageToUI('assistant', responseText, null, true);
+                appendMessageToUI('assistant', responseText);
             } catch (error) {
-                if (chatContainer.lastChild && chatContainer.lastChild.innerHTML.includes("思考中")) {
-                    chatContainer.removeChild(chatContainer.lastChild);
-                }
+                chatContainer.removeChild(loadingMsg);
                 showError(error.message);
-                chatHistory.pop();
+                chatHistory.pop(); // エラー時は履歴から削除
             } finally {
                 chatInput.disabled = false;
                 chatInput.focus();
