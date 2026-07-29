@@ -314,7 +314,7 @@
             margin-top: 10px;
         }
 
-        /* ----- チャット入力エリア ----- */
+        /* ----- チャット入力エリア (常に下部に固定) ----- */
         .chat-input-wrapper {
             flex-shrink: 0;
             padding: 20px 40px;
@@ -390,7 +390,9 @@
 
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
 
-        /* モバイル対応 */
+        /* =========================================
+           モバイル対応
+           ========================================= */
         @media (max-width: 768px) {
             .sidebar {
                 position: fixed;
@@ -400,8 +402,12 @@
                 transform: translateX(-100%);
                 width: 280px;
             }
-            .sidebar.open { transform: translateX(0); }
-            .sidebar-overlay.open { display: block; }
+            .sidebar.open {
+                transform: translateX(0);
+            }
+            .sidebar-overlay.open {
+                display: block;
+            }
             .menu-btn { display: block; }
             .close-sidebar-btn { display: block; }
             .header, .chat-container, .chat-input-wrapper {
@@ -418,10 +424,12 @@
 
     <div class="sidebar-overlay" id="sidebar-overlay"></div>
 
+    <!-- サイドバー -->
     <div class="sidebar" id="sidebar">
         <button class="close-sidebar-btn" id="close-sidebar-btn">&times;</button>
         <h2>🔑 APIキーの設定</h2>
         
+        <!-- APIキー入力部 -->
         <div class="form-group flex-group">
             <input type="password" id="api-key-input" placeholder="あなたのAPIキーを入力" style="flex-grow: 1; min-width: 0;">
             <select id="api-key-dropdown" style="width: 100px; flex-shrink: 0;" title="保存されたAPIキーから選択">
@@ -429,20 +437,22 @@
             </select>
         </div>
         
+        <!-- APIキーを表示するチェックボックス -->
         <div class="checkbox-group">
             <input type="checkbox" id="show-key-checkbox">
             <label for="show-key-checkbox" style="margin:0;">APIキーを表示</label>
         </div>
 
+        <!-- APIキー保存ボタン -->
         <div class="form-group">
             <button type="button" id="save-key-btn">APIキーを保存</button>
         </div>
 
         <div class="form-group">
             <label>Geminiのモデル名を選択</label>
-            <select id="model-select">
+            <select id="model-select" title="上の選択肢ほど性能が良いですが、上の選択肢ほどすぐ使えなくなります。">
                 <option value="gemini-3.1-pro-preview">gemini-3.1-pro-preview</option>
-                <option value="gemini-3.5-flash" selected>gemini-3.5-flash</option>
+                <option value="gemini-3.5-flash">gemini-3.5-flash</option>
                 <option value="gemini-3.1-flash-lite">gemini-3.1-flash-lite</option>
                 <option value="gemini-3-flash-preview">gemini-3-flash-preview</option>
             </select>
@@ -455,13 +465,16 @@
 
             <ol style="padding-left: 20px;">
                 <li><a href="https://aistudio.google.com/app/apikey" target="_blank">Google AI Studio</a> にアクセスします。</li>
-                <li>お持ちの <strong>Googleアカウントでログイン</strong> します。</li>
+                <li>お持ちの <strong>Googleアカウントでログイン</strong> します。<br>
+                （利用規約の画面が出たら、チェックを入れて「続行」を押してください）</li>
                 <li>画面の右上あたりにある青いボタン <strong>「APIキーを作成」</strong> をクリックします。</li>
                 <li>続いて上から2つ目の枠 <strong>「インポートしたプロジェクトを選択」</strong> → <strong>「新しいプロジェクト」</strong> の順にクリックします。</li>
                 <li>「プロジェクトの名前」を入力します。<code>Gemmath</code>などでよいと思います。入力後、「プロジェクトを作成」を押します。</li>
                 <li><strong>「キーを作成」</strong> を押してしばらく待つと <strong>「APIキー」</strong> という長い文字列が表示されます。</li>
                 <li>文字列の横にある <strong>コピーボタン</strong> を押してキーをコピーし、左側の入力欄に貼り付けてください。</li>
             </ol>
+
+            <p style="font-size: 0.8rem; color: red;">⚠️ <strong>注意</strong>: このキーは自分専用のパスワードと同じです。他人に教えたり、SNSに公開したりしないようご注意ください。</p>
         </details>
 
         <hr>
@@ -476,7 +489,7 @@
             </div>
             <div class="form-group">
                 <label>✍️ 問題を手入力（または画像の補足）</label>
-                <textarea id="problem-text" rows="5" placeholder="例: 0<x<π/4におけるsin2x+cos4xの取りうる値の範囲を求めよ。"></textarea>
+                <textarea id="problem-text" rows="5" placeholder="例: 0<x<π/4におけるsin2x+cos4xの取りうる値の範囲を求めよ。&#10;画像の(2)だけを解説してください。"></textarea>
             </div>
             <button type="submit" class="primary">この問題を解説させる</button>
         </form>
@@ -495,6 +508,8 @@
         <div id="status-area">
             <div class="info-box" id="initial-info">
                 👈 左側のサイドバーに、ご自身のGemini APIキーを入力してスタートしてください。
+                
+                ※取得方法は左側の「🔰 APIキーの取得方法（無料）」を開いて確認できます。
             </div>
         </div>
 
@@ -506,6 +521,7 @@
             <form id="chat-input-form" class="chat-input-form">
                 <textarea id="chat-input" rows="1" placeholder="この解説について質問や気になる点があれば入力してください...&#13;&#10;（Enterで改行）" disabled></textarea>
                 <button type="submit" id="chat-send-btn" class="send-btn" disabled title="送信">
+                    <!-- send.png を読み込む -->
                     <img src="send.png" alt="送信">
                 </button>
             </form>
@@ -513,7 +529,6 @@
     </div>
 
     <script>
-        // ★修正箇所: MathJaxのエラーを防ぐため、\left と \right の使用を完全に禁止する指示を追加
         const SYSTEM_INSTRUCTION = `
 ## 質問者の状況
 私は、高校数学の教科書内容を全て学習し終えた、難関大学への合格を目指す理系の高校3年生です。
@@ -529,15 +544,14 @@
 2. 入力された問題を解くために必要な、教科書レベルの基礎知識を説明してください。
 3. 入力された問題を解く上での考え方を教えてください。
 4. 入力された問題の模範解答を、ステップに分けて作成してください。
-5. なぜその解法を選択したのか、その解法を選択する必然性を教えてください。
+5. なぜその解法を選択したのか、その解法を選択する必然性を教えてください。その際、間違って選択してしまいがちな別の解法があれば、それを全て挙げて、それらはなぜ使用できないのか、どのような条件ならその解法を使用するかも解説してください。
 
-## 注意事項（重要）
+## 注意事項
 - 数式を出力する際は、必ずLaTeX形式（$ ... $ または $$ ... $$）を使用してください。
-- 描画エラー（Missing delimiter）を防ぐため、LaTeXの【\\left】および【\\right】コマンドは絶対に使用しないでください。括弧は自動調整せずそのまま ( ) や [ ] を使用してください。
-- 波括弧を使用する場合は必ず \\{ \\} のように記述してください。
 - 三角関数は、sin, cos, tanのみを使用してください。sec, csc, cotなどは使用しないでください。
 - 計算は丁寧にしてください。計算ミスは許されません。
 - 記述解答を作る際、減点のない、完璧な答案を書いてください。
+- 「解法の必然性」は、別の問題を解くときに再現性があるように、丁寧に詳しく書いてください。
 `;
 
         let chatHistory = []; 
@@ -582,13 +596,21 @@
             this.style.height = Math.min(this.scrollHeight, 150) + 'px';
         });
 
+        // ----------------------------------------------------
+        // APIキー管理ロジック
+        // ----------------------------------------------------
         window.onload = () => {
+            // 以前のバージョン(単一保存)のデータがあれば移行する
             const oldKey = localStorage.getItem('gemini_api_key');
             if (oldKey) {
                 saveApiKeyToLocal(oldKey);
                 localStorage.removeItem('gemini_api_key');
             }
+
+            // プルダウンのリストを更新
             updateApiKeyDropdown();
+
+            // 最後に使われたキー(配列の末尾)を入力欄にセットしておく
             const keys = JSON.parse(localStorage.getItem('gemini_api_keys') || '[]');
             if (keys.length > 0) {
                 apiKeyInput.value = keys[keys.length - 1];
@@ -596,6 +618,7 @@
             }
         };
 
+        // ローカルストレージにAPIキーを保存(重複は無視)
         function saveApiKeyToLocal(keyToSave) {
             if (!keyToSave) return;
             let keys = JSON.parse(localStorage.getItem('gemini_api_keys') || '[]');
@@ -606,44 +629,57 @@
             }
         }
 
+        // プルダウンの描画
         function updateApiKeyDropdown() {
             let keys = JSON.parse(localStorage.getItem('gemini_api_keys') || '[]');
+            
+            // 中身をリセット
             apiKeyDropdown.innerHTML = '<option value="">読込▼</option>';
+            
             keys.forEach(key => {
                 const option = document.createElement('option');
                 option.value = key;
+                // 変更箇所: 最後の8文字と...で表示するように変更
                 option.textContent = key.length > 8 ? '...' + key.slice(-8) : key;
                 apiKeyDropdown.appendChild(option);
             });
         }
 
+        // 「APIキーを保存」ボタンが押された時
         saveKeyBtn.addEventListener('click', () => {
             const currentKey = apiKeyInput.value.trim();
             if (currentKey) {
                 saveApiKeyToLocal(currentKey);
+                // 軽くボタンのテキストを変えて保存完了を知らせる
                 const originalText = saveKeyBtn.innerText;
                 saveKeyBtn.innerText = "✓ 保存しました";
                 setTimeout(() => { saveKeyBtn.innerText = originalText; }, 2000);
             }
         });
 
+        // プルダウンからキーを選択した時
         apiKeyDropdown.addEventListener('change', () => {
             if (apiKeyDropdown.value) {
                 apiKeyInput.value = apiKeyDropdown.value;
                 checkInitialState();
+                // 選択後は「読込▼」に戻しておく
                 apiKeyDropdown.selectedIndex = 0; 
             }
         });
 
+        // 「APIキーを表示」チェックボックスの切り替え
         showKeyCheckbox.addEventListener('change', () => {
             apiKeyInput.type = showKeyCheckbox.checked ? 'text' : 'password';
         });
 
         apiKeyInput.addEventListener('input', checkInitialState);
 
+        // ----------------------------------------------------
+        // UI状態管理
+        // ----------------------------------------------------
         function checkInitialState() {
             if (apiKeyInput.value.trim() === '') {
-                initialInfo.innerText = "👈 左側のサイドバーに、ご自身のGemini APIキーを入力してスタートしてください。";
+                initialInfo.innerText = "👈 左側のサイドバーに、ご自身のGemini APIキーを入力してスタートしてください。\n\n※取得方法は左側の「🔰 APIキーの取得方法（無料）」を開いて確認できます。";
                 initialInfo.style.display = 'block';
                 chatContainer.style.display = 'none';
                 chatInputWrapper.style.display = 'none';
@@ -655,6 +691,9 @@
             }
         }
 
+        // ----------------------------------------------------
+        // ファイル処理・Markdown・API通信
+        // ----------------------------------------------------
         function fileToBase64(file) {
             return new Promise((resolve, reject) => {
                 const reader = new FileReader();
@@ -754,7 +793,7 @@
             if (!response.ok) {
                 let errorMsg = data.error?.message || response.statusText;
                 if (response.status === 429) {
-                    errorMsg = "APIの利用制限に達しました。少し時間を置いてから再度お試しください。";
+                    errorMsg = "APIの利用制限に達しました。左側のメニューから「Geminiのモデル名」を下のものに変更するか、少し時間を置いてから再度お試しください。";
                 } else if (response.status === 400 && errorMsg.includes("API key not valid")) {
                     errorMsg = "無効なAPIキーです。 取得したキーが正しく貼り付けられているか確認してください。";
                 }
@@ -768,6 +807,9 @@
             }
         }
 
+        // ----------------------------------------------------
+        // 新しい問題を解く (フォーム送信)
+        // ----------------------------------------------------
         newProblemForm.addEventListener('submit', async (e) => {
             e.preventDefault();
             const apiKey = apiKeyInput.value.trim();
@@ -775,6 +817,8 @@
                 alert("APIキーを入力してください。");
                 return;
             }
+            
+            // 通信成功を期待して、利便性のため送信時にキーを自動保存しておく
             saveApiKeyToLocal(apiKey);
 
             const textInput = problemTextInput.value.trim();
@@ -785,7 +829,9 @@
                 return;
             }
 
-            if (window.innerWidth <= 768) closeSidebar();
+            if (window.innerWidth <= 768) {
+                closeSidebar();
+            }
 
             chatHistory = [];
             chatContainer.innerHTML = '';
@@ -796,8 +842,12 @@
             chatSendBtn.disabled = true;
 
             let initialPromptText = "以下の問題を指示通りの手順で解説してください。\n\n";
-            if (textInput) initialPromptText += `【テキスト・指示】\n${textInput}\n`;
-            if (fileInput) initialPromptText += "【画像】\n添付した画像の問題を解いてください。";
+            if (textInput) {
+                initialPromptText += `【テキスト・指示】\n${textInput}\n`;
+            }
+            if (fileInput) {
+                initialPromptText += "【画像】\n添付した画像の問題を解いてください。";
+            }
 
             let parts = [{ text: initialPromptText }];
             let displayImageUrl = null;
@@ -806,7 +856,10 @@
                 if (fileInput) {
                     const fileData = await fileToBase64(fileInput);
                     parts.push({
-                        inlineData: { data: fileData.base64, mimeType: fileData.mimeType }
+                        inlineData: {
+                            data: fileData.base64,
+                            mimeType: fileData.mimeType
+                        }
                     });
                     displayImageUrl = fileData.dataUrl;
                 }
@@ -842,6 +895,9 @@
             }
         });
 
+        // ----------------------------------------------------
+        // チャット入力 (フォーム送信)
+        // ----------------------------------------------------
         chatInputForm.addEventListener('submit', async (e) => {
             e.preventDefault();
             const prompt = chatInput.value.trim();
