@@ -7,6 +7,18 @@
     
     <!-- マークダウン解析用ライブラリ -->
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    
+    <!-- 数式レンダリング用ライブラリ (MathJax) -->
+    <script>
+        window.MathJax = {
+            tex: {
+                inlineMath: [['$', '$'], ['\\(', '\\)']],
+                displayMath: [['$$', '$$'], ['\\[', '\\]']]
+            },
+            svg: { fontCache: 'global' }
+        };
+    </script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></script>
 
     <style>
         :root {
@@ -475,14 +487,12 @@
                     <input type="file" id="file-input" accept="image/png, image/jpeg, image/jpg, image/webp" style="display: none;">
                     
                     <button type="button" class="attach-btn" id="attach-btn" title="画像を添付">
-                        <!-- クリップアイコンSVG -->
                         <svg viewBox="0 0 24 24"><path d="M16.5 6v11.5c0 2.21-1.79 4-4 4s-4-1.79-4-4V5a2.5 2.5 0 0 1 5 0v10.5c0 .55-.45 1-1 1s-1-.45-1-1V6H10v11.5a2.5 2.5 0 0 0 5 0V5c0-1.93-1.57-3.5-3.5-3.5S8 3.07 8 5v12.5c0 3.04 2.46 5.5 5.5 5.5s5.5-2.46 5.5-5.5V6h-2.5z"/></svg>
                     </button>
                     
-                    <textarea id="chat-input" rows="1" placeholder="メッセージを入力... (Shift+Enterで改行)"></textarea>
+                    <textarea id="chat-input" rows="1" placeholder="メッセージを入力... (Ctrl+Enterで送信)"></textarea>
                     
-                    <button type="submit" id="chat-send-btn" class="send-btn" disabled title="送信">
-                        <!-- 紙飛行機アイコンSVG -->
+                    <button type="submit" id="chat-send-btn" class="send-btn" disabled title="送信 (Ctrl+Enter)">
                         <svg viewBox="0 0 24 24"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
                     </button>
                 </div>
@@ -602,13 +612,11 @@
             let sessionTitle = currentMessages[0].text ? currentMessages[0].text.substring(0, 20) : "画像からの質問";
             
             if (currentSessionId) {
-                // 既存セッションの更新
                 const index = histories.findIndex(h => h.id === currentSessionId);
                 if (index !== -1) {
                     histories[index].messages = currentMessages;
                 }
             } else {
-                // 新規セッションの作成
                 currentSessionId = Date.now();
                 histories.unshift({
                     id: currentSessionId,
@@ -727,7 +735,7 @@
                 previewArea.style.display = 'block';
                 checkInputState();
             };
-            fileInput.value = ''; // リセット
+            fileInput.value = ''; 
         });
 
         removeImgBtn.addEventListener('click', removeAttachment);
@@ -739,7 +747,7 @@
             checkInputState();
         }
 
-        // --- チャット入力欄制御 ---
+        // --- チャット入力欄制御 (ショートカット変更) ---
         chatInput.addEventListener('input', function() {
             this.style.height = 'auto';
             this.style.height = Math.min(this.scrollHeight, 200) + 'px';
@@ -747,12 +755,14 @@
         });
 
         chatInput.addEventListener('keydown', function(e) {
-            if (e.key === 'Enter' && !e.shiftKey) {
-                e.preventDefault();
+            // Ctrl + Enter (または Cmd + Enter) で送信
+            if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+                e.preventDefault(); // デフォルトの改行を防ぐ
                 if (!chatSendBtn.disabled) {
                     chatInputForm.dispatchEvent(new Event('submit'));
                 }
             }
+            // Enter のみの場合は通常の改行が行われるため何もしない
         });
 
         function checkInputState() {
@@ -789,6 +799,11 @@
             msgDiv.appendChild(contentDiv);
             chatContainer.appendChild(msgDiv);
             
+            // 数式のレンダリングを実行
+            if (window.MathJax) {
+                MathJax.typesetPromise([msgDiv]).catch((err) => console.log(err));
+            }
+            
             if (animateScroll) {
                 msgDiv.scrollIntoView({ behavior: 'smooth', block: 'end' });
             } else {
@@ -807,14 +822,12 @@
 
         // --- Gemini API連携 ---
         function buildApiPayload() {
-            // currentMessages を Gemini APIが求める形式に変換
             const contents = currentMessages.map(msg => {
                 let parts = [];
                 if (msg.text) {
                     parts.push({ text: msg.text });
                 }
                 if (msg.imageUrl) {
-                    // 保存された DataURL から base64 と mimeType を抽出
                     const match = msg.imageUrl.match(/^data:(.*?);base64,(.*)$/);
                     if (match) {
                         parts.push({
@@ -831,7 +844,7 @@
             return {
                 systemInstruction: { parts: [{ text: SYSTEM_INSTRUCTION }] },
                 contents: contents,
-                generationConfig: { temperature: 0.7 } // 汎用チャットなので少し創造性をもたせる
+                generationConfig: { temperature: 0.7 }
             };
         }
 
@@ -847,7 +860,6 @@
 
             initialInfo.style.display = 'none';
 
-            // ユーザーメッセージの記録
             const userMsg = {
                 role: 'user',
                 text: promptText,
@@ -855,17 +867,14 @@
             };
             currentMessages.push(userMsg);
             
-            // UI更新
             appendMessageToUI('user', promptText, userMsg.imageUrl, true);
             
-            // 入力リセット
             chatInput.value = '';
             chatInput.style.height = 'auto';
             removeAttachment();
             chatInput.disabled = true;
             chatSendBtn.disabled = true;
 
-            // ローディングUI
             const loadingMsg = document.createElement('div');
             loadingMsg.className = 'message assistant';
             loadingMsg.innerHTML = `<div class="avatar">✨</div><div class="message-content"><div class="spinner"></div> 生成中...</div>`;
@@ -897,7 +906,6 @@
                     const responseText = data.candidates[0].content.parts[0].text;
                     chatContainer.removeChild(loadingMsg);
                     
-                    // アシスタントメッセージの記録と保存
                     currentMessages.push({ role: 'model', text: responseText, imageUrl: null });
                     appendMessageToUI('assistant', responseText, null, true);
                     
@@ -912,7 +920,7 @@
                     chatContainer.removeChild(loadingMsg);
                 }
                 showError(error.message);
-                currentMessages.pop(); // エラー時は直前のユーザー入力を取り消し
+                currentMessages.pop(); 
             } finally {
                 chatInput.disabled = false;
                 checkInputState();
