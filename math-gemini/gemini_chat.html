@@ -535,7 +535,7 @@
                 1. 左側のサイドバーに <strong>Gemini APIキー</strong> を入力してください。<br>
                 2. 下の入力欄からメッセージを送信すると対話がスタートします。<br>
                 3. クリップのアイコンから<strong>画像を添付</strong>して質問することも可能です。<br><br>
-                ※左上で<strong>Googleログイン</strong>すると、チャット履歴があなたのGoogleドライブ（アプリ専用領域）に保存され、他の端末とも同期されます。ログインしない場合は、この端末のブラウザ内にのみ保存されます。
+                ※左上で<strong>Googleログイン</strong>すると、チャット履歴があなたのGoogleドライブ（アプリ専用領域）に自動保存され、他の端末とも同期されます。ログインしない場合は、この端末のブラウザ内にのみ一時的に保存されます（容量に上限があります）。
             </div>
         </div>
 
@@ -583,6 +583,7 @@
         let isSignedIn = false;
         let isSyncing = false;
         let pendingCloudSave = false;   // 同期中に追加の保存要求が来た場合のフラグ
+        const LAST_SIGNIN_KEY = 'gemini_last_signed_in'; // 前回ログイン済みだったかの記録（トークン自体は保存しない）
 
         // UI要素
         const sidebar = document.getElementById('sidebar');
@@ -663,6 +664,16 @@
                 scope: GOOGLE_DRIVE_SCOPE,
                 callback: handleAccessTokenResponse,
             });
+
+            // 前回ログイン済みだった場合、ユーザー操作なしで裏側からサイレント再認証を試みる
+            if (localStorage.getItem(LAST_SIGNIN_KEY) === 'true') {
+                setSyncStatus('自動ログインを試みています...', 'syncing');
+                // prompt:'' により、Googleのセッションが有効ならポップアップ無しでトークンを取得できる
+                // （ブラウザのポップアップブロック回避のため、少し遅延させて呼び出す）
+                setTimeout(() => {
+                    googleTokenClient.requestAccessToken({ prompt: '' });
+                }, 300);
+            }
         }
 
         // 「Sign in with Google」ボタンが押されたときの処理（プロフィール情報の取得）
@@ -683,11 +694,33 @@
         // Driveアクセストークンが取得できたときの処理
         async function handleAccessTokenResponse(tokenResponse) {
             if (tokenResponse.error) {
-                setSyncStatus('Googleアクセスの許可が必要です。', 'error');
+                // サイレント認証が失敗した場合（Googleセッション切れ等）は、
+                // 静かに諦めて通常のログインボタン操作を待つ
+                localStorage.removeItem(LAST_SIGNIN_KEY);
+                setSyncStatus('', null);
                 return;
             }
             googleAccessToken = tokenResponse.access_token;
             isSignedIn = true;
+            localStorage.setItem(LAST_SIGNIN_KEY, 'true');
+
+            // プロフィール（メール・アイコン）がまだ表示されていない場合は取得する
+            if (!accountBox.classList.contains('signed-in')) {
+                try {
+                    const profileRes = await fetch(
+                        'https://www.googleapis.com/oauth2/v3/userinfo',
+                        { headers: { Authorization: `Bearer ${googleAccessToken}` } }
+                    );
+                    if (profileRes.ok) {
+                        const profile = await profileRes.json();
+                        accountEmail.textContent = profile.email || '';
+                        accountAvatar.src = profile.picture || '';
+                        accountBox.classList.add('signed-in');
+                    }
+                } catch (e) {
+                    console.warn('プロフィール取得に失敗:', e);
+                }
+            }
 
             setSyncStatus('クラウドの履歴を読み込み中...', 'syncing');
             try {
@@ -709,6 +742,7 @@
             googleAccessToken = null;
             driveFileId = null;
             isSignedIn = false;
+            localStorage.removeItem(LAST_SIGNIN_KEY);
             accountBox.classList.remove('signed-in');
             setSyncStatus('', null);
             google.accounts.id.disableAutoSelect();
@@ -877,7 +911,12 @@
             try {
                 localStorage.setItem('gemini_chat_histories', JSON.stringify(histories));
             } catch (e) {
-                alert("ブラウザの保存容量の上限に達しました。古い履歴を削除してください。（※画像が多いと容量を圧迫します）");
+                if (isSignedIn) {
+                    // クラウド保存が主なので、ローカルキャッシュの失敗は致命的ではない
+                    console.warn('ローカルキャッシュへの保存に失敗しましたが、クラウド保存を継続します。', e);
+                } else {
+                    alert("ブラウザの保存容量の上限に達しました。古い履歴を削除するか、Googleでログインしてクラウドに保存してください。");
+                }
             }
         }
 
