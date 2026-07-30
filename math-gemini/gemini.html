@@ -1,0 +1,924 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>💬 Gemini チャット</title>
+    
+    <!-- マークダウン解析用ライブラリ -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+
+    <style>
+        :root {
+            --bg-color: #ffffff;
+            --sidebar-bg: #f7f9fc;
+            --text-color: #202124;
+            --border-color: #e3e3e3;
+            --primary-color: #1a73e8;
+            --primary-hover: #1557b0;
+            --user-msg-bg: #e8f0fe;
+            --bot-msg-bg: #f8f9fa;
+            --danger-color: #d93025;
+        }
+
+        * {
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Meiryo, system-ui, -apple-system, sans-serif;
+        }
+
+        body {
+            margin: 0;
+            display: flex;
+            height: 100dvh;
+            color: var(--text-color);
+            background-color: var(--bg-color);
+            overflow: hidden;
+        }
+
+        /* ----- サイドバー ----- */
+        .sidebar {
+            width: 300px;
+            background-color: var(--sidebar-bg);
+            display: flex;
+            flex-direction: column;
+            border-right: 1px solid var(--border-color);
+            flex-shrink: 0;
+            position: relative;
+            z-index: 1000;
+            transition: transform 0.3s ease;
+        }
+
+        .sidebar-header {
+            padding: 20px;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .sidebar h2 {
+            font-size: 1.1rem;
+            margin: 0 0 15px 0;
+        }
+
+        .form-group { margin-bottom: 15px; }
+        .flex-group { display: flex; gap: 5px; }
+        
+        label {
+            display: block;
+            font-size: 0.85rem;
+            margin-bottom: 5px;
+            font-weight: bold;
+            color: #5f6368;
+        }
+
+        input[type="password"],
+        input[type="text"],
+        select {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid var(--border-color);
+            border-radius: 5px;
+            font-size: 0.9rem;
+        }
+
+        .checkbox-group {
+            display: flex;
+            align-items: center;
+            font-size: 0.85rem;
+            gap: 5px;
+            margin-bottom: 15px;
+            color: #5f6368;
+        }
+
+        button.btn {
+            width: 100%;
+            padding: 8px;
+            background-color: white;
+            color: var(--text-color);
+            border: 1px solid var(--border-color);
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            transition: 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 5px;
+        }
+
+        button.btn:hover { background-color: #f1f3f4; }
+        
+        button.btn.primary {
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            padding: 10px;
+            font-weight: bold;
+            font-size: 1rem;
+            margin-bottom: 10px;
+        }
+        button.btn.primary:hover { background-color: var(--primary-hover); }
+
+        /* 履歴リスト */
+        .history-container {
+            flex-grow: 1;
+            overflow-y: auto;
+            padding: 10px;
+        }
+        
+        .history-container h3 {
+            font-size: 0.85rem;
+            color: #5f6368;
+            margin: 10px 10px;
+        }
+
+        .history-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+
+        .history-item {
+            padding: 10px;
+            margin-bottom: 5px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: 0.2s;
+        }
+
+        .history-item:hover { background-color: #e8eaed; }
+        .history-item.active {
+            background-color: #e8f0fe;
+            color: var(--primary-color);
+            font-weight: bold;
+        }
+
+        .history-title {
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            flex-grow: 1;
+        }
+
+        .delete-history-btn {
+            background: none;
+            border: none;
+            color: #9aa0a6;
+            cursor: pointer;
+            padding: 5px;
+            display: flex;
+            align-items: center;
+        }
+        .delete-history-btn:hover { color: var(--danger-color); }
+        .delete-history-btn svg { width: 16px; height: 16px; fill: currentColor; }
+
+        .close-sidebar-btn {
+            display: none;
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            color: #5f6368;
+        }
+
+        .sidebar-overlay {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.5);
+            z-index: 999;
+        }
+
+        /* ----- メインコンテンツ ----- */
+        .main {
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+            min-width: 0;
+            height: 100dvh;
+        }
+
+        .header {
+            flex-shrink: 0;
+            padding: 15px 20px;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            align-items: center;
+            background: rgba(255, 255, 255, 0.9);
+            backdrop-filter: blur(5px);
+        }
+
+        .menu-btn {
+            display: none;
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            cursor: pointer;
+            margin-right: 15px;
+            color: #5f6368;
+        }
+
+        .header h1 { margin: 0; font-size: 1.3rem; }
+
+        /* チャット表示エリア */
+        .chat-container {
+            flex-grow: 1;
+            padding: 20px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .message { display: flex; gap: 15px; max-width: 850px; margin: 0 auto; width: 100%; }
+        .message.user { flex-direction: row-reverse; }
+
+        .avatar {
+            width: 36px; height: 36px;
+            border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 1.2rem; flex-shrink: 0;
+        }
+        .user .avatar { background-color: var(--primary-color); color: white; }
+        .assistant .avatar { background-color: #10a37f; color: white; }
+
+        .message-content {
+            padding: 12px 18px;
+            border-radius: 12px;
+            font-size: 1rem;
+            line-height: 1.6;
+            overflow-x: auto;
+            max-width: calc(100% - 50px);
+        }
+
+        .user .message-content {
+            background-color: var(--user-msg-bg);
+            border: 1px solid #d0e1fd;
+        }
+        .assistant .message-content {
+            background-color: var(--bot-msg-bg);
+            border: 1px solid var(--border-color);
+            width: 100%;
+        }
+
+        .message-content p:first-child { margin-top: 0; }
+        .message-content p:last-child { margin-bottom: 0; }
+        
+        .message-content pre {
+            background: #282c34; color: #abb2bf;
+            padding: 10px; border-radius: 5px; overflow-x: auto;
+        }
+
+        .message-content img.attached-image {
+            max-width: 300px;
+            width: 100%;
+            border-radius: 8px;
+            margin-bottom: 10px;
+            border: 1px solid var(--border-color);
+        }
+
+        .info-box {
+            background-color: #e8f4fd; border-left: 4px solid var(--primary-color);
+            padding: 15px; border-radius: 4px; margin: 20px auto; max-width: 600px;
+        }
+        .error-box {
+            background-color: #fde8e8; border-left: 4px solid var(--danger-color);
+            padding: 15px; border-radius: 4px; margin-top: 10px; font-size: 0.9rem;
+        }
+
+        /* ----- チャット入力エリア ----- */
+        .chat-input-wrapper {
+            flex-shrink: 0;
+            padding: 15px 20px;
+            padding-bottom: calc(15px + env(safe-area-inset-bottom));
+            background-color: var(--bg-color);
+            border-top: 1px solid var(--border-color);
+        }
+
+        .chat-input-form {
+            display: flex;
+            flex-direction: column;
+            max-width: 850px;
+            margin: 0 auto;
+            position: relative;
+            background: #fff;
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+        }
+        
+        .chat-input-form:focus-within { border-color: var(--primary-color); }
+
+        /* 画像プレビューエリア */
+        .preview-area {
+            display: none;
+            padding: 10px 15px 0;
+        }
+        .preview-item {
+            position: relative;
+            display: inline-block;
+        }
+        .preview-item img {
+            height: 60px;
+            border-radius: 6px;
+            border: 1px solid #ccc;
+        }
+        .preview-item .remove-btn {
+            position: absolute;
+            top: -5px; right: -5px;
+            background: #5f6368; color: white;
+            border: none; border-radius: 50%;
+            width: 20px; height: 20px;
+            font-size: 12px; cursor: pointer;
+            display: flex; align-items: center; justify-content: center;
+        }
+
+        .input-row {
+            display: flex;
+            align-items: flex-end;
+            padding: 8px;
+        }
+
+        .attach-btn {
+            background: none; border: none; cursor: pointer;
+            padding: 8px; color: #5f6368; border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            transition: 0.2s; flex-shrink: 0;
+        }
+        .attach-btn:hover { background: #f1f3f4; color: var(--text-color); }
+        .attach-btn svg { width: 22px; height: 22px; fill: currentColor; }
+
+        .chat-input-form textarea {
+            border: none; outline: none;
+            padding: 10px; flex-grow: 1;
+            resize: none; font-size: 1rem;
+            line-height: 1.5; min-height: 44px; max-height: 200px;
+            background: transparent;
+        }
+
+        .send-btn {
+            background: var(--primary-color); border: none;
+            color: white; cursor: pointer;
+            width: 36px; height: 36px; border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            transition: 0.2s; flex-shrink: 0; margin-bottom: 4px; margin-right: 4px;
+        }
+        .send-btn:hover { background: var(--primary-hover); }
+        .send-btn:disabled { background: #e3e3e3; cursor: not-allowed; }
+        .send-btn svg { width: 18px; height: 18px; fill: currentColor; }
+
+        .spinner {
+            border: 3px solid rgba(0,0,0,0.1); border-radius: 50%;
+            border-top: 3px solid var(--primary-color);
+            width: 18px; height: 18px;
+            animation: spin 1s linear infinite; display: inline-block;
+            vertical-align: middle; margin-right: 8px;
+        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+        /* モバイル対応 */
+        @media (max-width: 768px) {
+            .sidebar {
+                position: fixed; height: 100dvh; left: 0; top: 0;
+                transform: translateX(-100%); width: 280px;
+            }
+            .sidebar.open { transform: translateX(0); }
+            .sidebar-overlay.open { display: block; }
+            .menu-btn { display: block; }
+            .close-sidebar-btn { display: block; }
+            .message { gap: 10px; }
+            .avatar { width: 30px; height: 30px; font-size: 1rem; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="sidebar-overlay" id="sidebar-overlay"></div>
+
+    <!-- サイドバー -->
+    <div class="sidebar" id="sidebar">
+        <button class="close-sidebar-btn" id="close-sidebar-btn">&times;</button>
+        
+        <div class="sidebar-header">
+            <button class="btn primary" id="new-chat-btn">
+                <svg style="width:18px;height:18px;fill:white;" viewBox="0 0 24 24"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>
+                新しいチャット
+            </button>
+            
+            <h2>⚙️ 設定</h2>
+            <div class="form-group flex-group">
+                <input type="password" id="api-key-input" placeholder="APIキーを入力" style="flex-grow: 1;">
+                <select id="api-key-dropdown" style="width: 80px;" title="保存されたAPIキー">
+                    <option value="">読込▼</option>
+                </select>
+            </div>
+            <div class="checkbox-group">
+                <input type="checkbox" id="show-key-checkbox">
+                <label for="show-key-checkbox" style="margin:0;">APIキーを表示</label>
+            </div>
+            <div class="form-group">
+                <button type="button" class="btn" id="save-key-btn">キーを保存</button>
+            </div>
+            
+            <div class="form-group" style="margin-bottom:0;">
+                <label>モデル選択</label>
+                <select id="model-select">
+                    <option value="gemini-3.5-flash">gemini-3.5-flash (高速・標準)</option>
+                    <option value="gemini-3.1-pro-preview">gemini-3.1-pro-preview (高性能)</option>
+                    <option value="gemini-3.1-flash-lite">gemini-3.1-flash-lite (軽量)</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="history-container">
+            <h3>📝 チャット履歴</h3>
+            <ul class="history-list" id="history-list">
+                <!-- 履歴アイテムがここに追加されます -->
+            </ul>
+        </div>
+    </div>
+
+    <!-- メインコンテンツ -->
+    <div class="main">
+        <div class="header">
+            <button class="menu-btn" id="menu-btn">☰</button>
+            <h1>💬 Gemini チャット</h1>
+        </div>
+
+        <div class="chat-container" id="chat-container">
+            <div class="info-box" id="initial-info">
+                <strong>Geminiチャットへようこそ！</strong><br><br>
+                1. 左側のサイドバーに <strong>Gemini APIキー</strong> を入力してください。<br>
+                2. 下の入力欄からメッセージを送信すると対話がスタートします。<br>
+                3. クリップのアイコンから<strong>画像を添付</strong>して質問することも可能です。<br><br>
+                ※チャットの履歴はブラウザに自動で保存されます。
+            </div>
+        </div>
+
+        <div class="chat-input-wrapper">
+            <form id="chat-input-form" class="chat-input-form">
+                
+                <!-- 画像プレビュー -->
+                <div class="preview-area" id="preview-area">
+                    <div class="preview-item">
+                        <img id="preview-img" src="" alt="添付画像">
+                        <button type="button" class="remove-btn" id="remove-img-btn">&times;</button>
+                    </div>
+                </div>
+
+                <div class="input-row">
+                    <!-- 隠しファイル入力 -->
+                    <input type="file" id="file-input" accept="image/png, image/jpeg, image/jpg, image/webp" style="display: none;">
+                    
+                    <button type="button" class="attach-btn" id="attach-btn" title="画像を添付">
+                        <!-- クリップアイコンSVG -->
+                        <svg viewBox="0 0 24 24"><path d="M16.5 6v11.5c0 2.21-1.79 4-4 4s-4-1.79-4-4V5a2.5 2.5 0 0 1 5 0v10.5c0 .55-.45 1-1 1s-1-.45-1-1V6H10v11.5a2.5 2.5 0 0 0 5 0V5c0-1.93-1.57-3.5-3.5-3.5S8 3.07 8 5v12.5c0 3.04 2.46 5.5 5.5 5.5s5.5-2.46 5.5-5.5V6h-2.5z"/></svg>
+                    </button>
+                    
+                    <textarea id="chat-input" rows="1" placeholder="メッセージを入力... (Shift+Enterで改行)"></textarea>
+                    
+                    <button type="submit" id="chat-send-btn" class="send-btn" disabled title="送信">
+                        <!-- 紙飛行機アイコンSVG -->
+                        <svg viewBox="0 0 24 24"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        const SYSTEM_INSTRUCTION = "あなたは親切で有能なAIアシスタントです。ユーザーの質問や指示に丁寧に答えてください。";
+
+        // UI要素
+        const sidebar = document.getElementById('sidebar');
+        const sidebarOverlay = document.getElementById('sidebar-overlay');
+        const menuBtn = document.getElementById('menu-btn');
+        const closeSidebarBtn = document.getElementById('close-sidebar-btn');
+        const newChatBtn = document.getElementById('new-chat-btn');
+        const historyListEl = document.getElementById('history-list');
+
+        const apiKeyInput = document.getElementById('api-key-input');
+        const apiKeyDropdown = document.getElementById('api-key-dropdown');
+        const showKeyCheckbox = document.getElementById('show-key-checkbox');
+        const saveKeyBtn = document.getElementById('save-key-btn');
+        const modelSelect = document.getElementById('model-select');
+        
+        const initialInfo = document.getElementById('initial-info');
+        const chatContainer = document.getElementById('chat-container');
+        const chatInput = document.getElementById('chat-input');
+        const chatSendBtn = document.getElementById('chat-send-btn');
+        const chatInputForm = document.getElementById('chat-input-form');
+        
+        const attachBtn = document.getElementById('attach-btn');
+        const fileInput = document.getElementById('file-input');
+        const previewArea = document.getElementById('preview-area');
+        const previewImg = document.getElementById('preview-img');
+        const removeImgBtn = document.getElementById('remove-img-btn');
+
+        // 状態管理
+        let currentSessionId = null;
+        let currentMessages = []; // { role: 'user'|'model', text: '...', imageUrl: '...' }
+        let attachedImageData = null; // { base64, mimeType, dataUrl }
+
+        // --- サイドバー開閉 ---
+        function openSidebar() { sidebar.classList.add('open'); sidebarOverlay.classList.add('open'); }
+        function closeSidebar() { sidebar.classList.remove('open'); sidebarOverlay.classList.remove('open'); }
+        menuBtn.addEventListener('click', openSidebar);
+        closeSidebarBtn.addEventListener('click', closeSidebar);
+        sidebarOverlay.addEventListener('click', closeSidebar);
+
+        // --- APIキー管理 ---
+        window.onload = () => {
+            updateApiKeyDropdown();
+            const keys = JSON.parse(localStorage.getItem('gemini_api_keys') || '[]');
+            if (keys.length > 0) { apiKeyInput.value = keys[keys.length - 1]; }
+            renderHistoryList();
+            checkInputState();
+        };
+
+        function saveApiKeyToLocal(key) {
+            if (!key) return;
+            let keys = JSON.parse(localStorage.getItem('gemini_api_keys') || '[]');
+            if (!keys.includes(key)) {
+                keys.push(key);
+                localStorage.setItem('gemini_api_keys', JSON.stringify(keys));
+                updateApiKeyDropdown();
+            }
+        }
+
+        function updateApiKeyDropdown() {
+            let keys = JSON.parse(localStorage.getItem('gemini_api_keys') || '[]');
+            apiKeyDropdown.innerHTML = '<option value="">読込▼</option>';
+            keys.forEach(key => {
+                const option = document.createElement('option');
+                option.value = key;
+                option.textContent = key.length > 8 ? '...' + key.slice(-8) : key;
+                apiKeyDropdown.appendChild(option);
+            });
+        }
+
+        saveKeyBtn.addEventListener('click', () => {
+            const currentKey = apiKeyInput.value.trim();
+            if (currentKey) {
+                saveApiKeyToLocal(currentKey);
+                const originalText = saveKeyBtn.innerText;
+                saveKeyBtn.innerText = "✓ 保存済";
+                setTimeout(() => { saveKeyBtn.innerText = originalText; }, 2000);
+            }
+        });
+
+        apiKeyDropdown.addEventListener('change', () => {
+            if (apiKeyDropdown.value) {
+                apiKeyInput.value = apiKeyDropdown.value;
+                apiKeyDropdown.selectedIndex = 0;
+            }
+        });
+
+        showKeyCheckbox.addEventListener('change', () => {
+            apiKeyInput.type = showKeyCheckbox.checked ? 'text' : 'password';
+        });
+
+        // --- 履歴管理 ---
+        function loadHistories() {
+            return JSON.parse(localStorage.getItem('gemini_chat_histories') || '[]');
+        }
+
+        function saveHistories(histories) {
+            try {
+                localStorage.setItem('gemini_chat_histories', JSON.stringify(histories));
+            } catch (e) {
+                alert("ブラウザの保存容量の上限に達しました。古い履歴を削除してください。（※画像が多いと容量を圧迫します）");
+            }
+        }
+
+        function saveCurrentSession() {
+            if (currentMessages.length === 0) return;
+            
+            let histories = loadHistories();
+            let sessionTitle = currentMessages[0].text ? currentMessages[0].text.substring(0, 20) : "画像からの質問";
+            
+            if (currentSessionId) {
+                // 既存セッションの更新
+                const index = histories.findIndex(h => h.id === currentSessionId);
+                if (index !== -1) {
+                    histories[index].messages = currentMessages;
+                }
+            } else {
+                // 新規セッションの作成
+                currentSessionId = Date.now();
+                histories.unshift({
+                    id: currentSessionId,
+                    title: sessionTitle,
+                    messages: currentMessages
+                });
+            }
+            saveHistories(histories);
+            renderHistoryList();
+        }
+
+        function renderHistoryList() {
+            const histories = loadHistories();
+            historyListEl.innerHTML = '';
+            
+            if (histories.length === 0) {
+                historyListEl.innerHTML = '<li style="font-size:0.85rem; color:#999; padding:10px;">履歴はありません</li>';
+                return;
+            }
+
+            histories.forEach(history => {
+                const li = document.createElement('li');
+                li.className = `history-item ${history.id === currentSessionId ? 'active' : ''}`;
+                
+                const titleSpan = document.createElement('span');
+                titleSpan.className = 'history-title';
+                titleSpan.textContent = history.title;
+                titleSpan.title = history.title;
+                
+                titleSpan.addEventListener('click', () => {
+                    loadSession(history.id);
+                    if (window.innerWidth <= 768) closeSidebar();
+                });
+
+                const deleteBtn = document.createElement('button');
+                deleteBtn.className = 'delete-history-btn';
+                deleteBtn.innerHTML = '<svg viewBox="0 0 24 24"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>';
+                deleteBtn.title = "削除";
+                deleteBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    if (confirm("このチャット履歴を削除しますか？")) {
+                        deleteSession(history.id);
+                    }
+                });
+
+                li.appendChild(titleSpan);
+                li.appendChild(deleteBtn);
+                historyListEl.appendChild(li);
+            });
+        }
+
+        function loadSession(id) {
+            const histories = loadHistories();
+            const session = histories.find(h => h.id === id);
+            if (session) {
+                currentSessionId = session.id;
+                currentMessages = session.messages;
+                
+                chatContainer.innerHTML = '';
+                initialInfo.style.display = 'none';
+                
+                currentMessages.forEach(msg => {
+                    appendMessageToUI(msg.role, msg.text, msg.imageUrl, false);
+                });
+                renderHistoryList();
+            }
+        }
+
+        function deleteSession(id) {
+            let histories = loadHistories();
+            histories = histories.filter(h => h.id !== id);
+            saveHistories(histories);
+            
+            if (currentSessionId === id) {
+                startNewChat();
+            } else {
+                renderHistoryList();
+            }
+        }
+
+        function startNewChat() {
+            currentSessionId = null;
+            currentMessages = [];
+            chatContainer.innerHTML = '';
+            chatContainer.appendChild(initialInfo);
+            initialInfo.style.display = 'block';
+            renderHistoryList();
+            removeAttachment();
+            chatInput.value = '';
+            checkInputState();
+            if (window.innerWidth <= 768) closeSidebar();
+        }
+
+        newChatBtn.addEventListener('click', startNewChat);
+
+        // --- 画像添付処理 ---
+        attachBtn.addEventListener('click', () => fileInput.click());
+
+        fileInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.readAsDataURL(file);
+            reader.onload = () => {
+                let encoded = reader.result.toString().replace(/^data:(.*,)?/, '');
+                if ((encoded.length % 4) > 0) encoded += '='.repeat(4 - (encoded.length % 4));
+                
+                attachedImageData = {
+                    base64: encoded,
+                    mimeType: file.type,
+                    dataUrl: reader.result
+                };
+                
+                previewImg.src = reader.result;
+                previewArea.style.display = 'block';
+                checkInputState();
+            };
+            fileInput.value = ''; // リセット
+        });
+
+        removeImgBtn.addEventListener('click', removeAttachment);
+
+        function removeAttachment() {
+            attachedImageData = null;
+            previewArea.style.display = 'none';
+            previewImg.src = '';
+            checkInputState();
+        }
+
+        // --- チャット入力欄制御 ---
+        chatInput.addEventListener('input', function() {
+            this.style.height = 'auto';
+            this.style.height = Math.min(this.scrollHeight, 200) + 'px';
+            checkInputState();
+        });
+
+        chatInput.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                if (!chatSendBtn.disabled) {
+                    chatInputForm.dispatchEvent(new Event('submit'));
+                }
+            }
+        });
+
+        function checkInputState() {
+            const text = chatInput.value.trim();
+            const hasApi = apiKeyInput.value.trim() !== '';
+            chatSendBtn.disabled = !(hasApi && (text || attachedImageData));
+        }
+        apiKeyInput.addEventListener('input', checkInputState);
+
+        // --- チャットUI構築 ---
+        function appendMessageToUI(role, text, imageUrl, animateScroll = true) {
+            const msgDiv = document.createElement('div');
+            msgDiv.className = `message ${role}`;
+            
+            const avatar = document.createElement('div');
+            avatar.className = 'avatar';
+            avatar.innerText = role === 'user' ? '👤' : '✨';
+            
+            const contentDiv = document.createElement('div');
+            contentDiv.className = 'message-content';
+            
+            if (imageUrl) {
+                const img = document.createElement('img');
+                img.src = imageUrl;
+                img.className = 'attached-image';
+                contentDiv.appendChild(img);
+            }
+            
+            const textDiv = document.createElement('div');
+            textDiv.innerHTML = marked.parse(text || "");
+            contentDiv.appendChild(textDiv);
+            
+            msgDiv.appendChild(avatar);
+            msgDiv.appendChild(contentDiv);
+            chatContainer.appendChild(msgDiv);
+            
+            if (animateScroll) {
+                msgDiv.scrollIntoView({ behavior: 'smooth', block: 'end' });
+            } else {
+                chatContainer.scrollTop = chatContainer.scrollHeight;
+            }
+            return msgDiv;
+        }
+
+        function showError(message) {
+            const errorDiv = document.createElement('div');
+            errorDiv.className = 'error-box';
+            errorDiv.innerHTML = `<strong>⚠️ エラー:</strong> ${message}`;
+            chatContainer.appendChild(errorDiv);
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+        }
+
+        // --- Gemini API連携 ---
+        function buildApiPayload() {
+            // currentMessages を Gemini APIが求める形式に変換
+            const contents = currentMessages.map(msg => {
+                let parts = [];
+                if (msg.text) {
+                    parts.push({ text: msg.text });
+                }
+                if (msg.imageUrl) {
+                    // 保存された DataURL から base64 と mimeType を抽出
+                    const match = msg.imageUrl.match(/^data:(.*?);base64,(.*)$/);
+                    if (match) {
+                        parts.push({
+                            inlineData: {
+                                mimeType: match[1],
+                                data: match[2]
+                            }
+                        });
+                    }
+                }
+                return { role: msg.role, parts: parts };
+            });
+
+            return {
+                systemInstruction: { parts: [{ text: SYSTEM_INSTRUCTION }] },
+                contents: contents,
+                generationConfig: { temperature: 0.7 } // 汎用チャットなので少し創造性をもたせる
+            };
+        }
+
+        chatInputForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const apiKey = apiKeyInput.value.trim();
+            if (!apiKey) { alert("APIキーを入力してください。"); return; }
+            
+            saveApiKeyToLocal(apiKey);
+
+            const promptText = chatInput.value.trim();
+            if (!promptText && !attachedImageData) return;
+
+            initialInfo.style.display = 'none';
+
+            // ユーザーメッセージの記録
+            const userMsg = {
+                role: 'user',
+                text: promptText,
+                imageUrl: attachedImageData ? attachedImageData.dataUrl : null
+            };
+            currentMessages.push(userMsg);
+            
+            // UI更新
+            appendMessageToUI('user', promptText, userMsg.imageUrl, true);
+            
+            // 入力リセット
+            chatInput.value = '';
+            chatInput.style.height = 'auto';
+            removeAttachment();
+            chatInput.disabled = true;
+            chatSendBtn.disabled = true;
+
+            // ローディングUI
+            const loadingMsg = document.createElement('div');
+            loadingMsg.className = 'message assistant';
+            loadingMsg.innerHTML = `<div class="avatar">✨</div><div class="message-content"><div class="spinner"></div> 生成中...</div>`;
+            chatContainer.appendChild(loadingMsg);
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+
+            try {
+                const model = modelSelect.value;
+                const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+                
+                const payload = buildApiPayload();
+
+                const response = await fetch(url, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                const data = await response.json();
+
+                if (!response.ok) {
+                    let errorMsg = data.error?.message || response.statusText;
+                    if (response.status === 429) errorMsg = "APIの利用制限に達しました。時間をおいてお試しください。";
+                    else if (response.status === 400 && errorMsg.includes("API key not valid")) errorMsg = "無効なAPIキーです。";
+                    throw new Error(errorMsg);
+                }
+
+                if (data.candidates && data.candidates[0].content && data.candidates[0].content.parts) {
+                    const responseText = data.candidates[0].content.parts[0].text;
+                    chatContainer.removeChild(loadingMsg);
+                    
+                    // アシスタントメッセージの記録と保存
+                    currentMessages.push({ role: 'model', text: responseText, imageUrl: null });
+                    appendMessageToUI('assistant', responseText, null, true);
+                    
+                    saveCurrentSession();
+                    
+                } else {
+                    throw new Error("予期せぬレスポンス形式です。");
+                }
+
+            } catch (error) {
+                if (chatContainer.lastChild === loadingMsg) {
+                    chatContainer.removeChild(loadingMsg);
+                }
+                showError(error.message);
+                currentMessages.pop(); // エラー時は直前のユーザー入力を取り消し
+            } finally {
+                chatInput.disabled = false;
+                checkInputState();
+                chatInput.focus();
+            }
+        });
+    </script>
+</body>
+</html>
