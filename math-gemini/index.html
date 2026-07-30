@@ -3,37 +3,35 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-    <title>💬 Gemini チャット</title>
+    <title>📐 数学解説Gemini (APIキー要求版)</title>
     
     <!-- マークダウン解析用ライブラリ -->
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
-
-    <!-- Google Identity Services（Googleログイン & Drive保存用） -->
-    <script src="https://accounts.google.com/gsi/client" async defer></script>
     
-    <!-- 数式レンダリング用ライブラリ (MathJax) -->
+    <!-- 数式(LaTeX)描画用ライブラリ(MathJax) -->
     <script>
-        window.MathJax = {
+        MathJax = {
             tex: {
                 inlineMath: [['$', '$'], ['\\(', '\\)']],
-                displayMath: [['$$', '$$'], ['\\[', '\\]']]
+                displayMath: [['$$', '$$'], ['\\[', '\\]']],
+                processEscapes: true
             },
-            svg: { fontCache: 'global' }
+            options: {
+                skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code']
+            }
         };
     </script>
-    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
 
     <style>
         :root {
             --bg-color: #ffffff;
-            --sidebar-bg: #f7f9fc;
-            --text-color: #202124;
-            --border-color: #e3e3e3;
-            --primary-color: #1a73e8;
-            --primary-hover: #1557b0;
+            --sidebar-bg: #f0f2f6;
+            --text-color: #31333f;
+            --border-color: #dcdcdc;
+            --primary-color: #ff4b4b;
             --user-msg-bg: #e8f0fe;
-            --bot-msg-bg: #f8f9fa;
-            --danger-color: #d93025;
+            --bot-msg-bg: #f9f9f9;
         }
 
         * {
@@ -52,10 +50,10 @@
 
         /* ----- サイドバー ----- */
         .sidebar {
-            width: 300px;
+            width: 330px;
             background-color: var(--sidebar-bg);
-            display: flex;
-            flex-direction: column;
+            padding: 100px 20px;
+            overflow-y: auto;
             border-right: 1px solid var(--border-color);
             flex-shrink: 0;
             position: relative;
@@ -63,194 +61,125 @@
             transition: transform 0.3s ease;
         }
 
-        .sidebar-header {
-            padding: 20px;
-            border-bottom: 1px solid var(--border-color);
-        }
-
         .sidebar h2 {
             font-size: 1.1rem;
-            margin: 0 0 15px 0;
+            margin-top: 0;
+            margin-bottom: 15px;
         }
 
-        .form-group { margin-bottom: 15px; }
-        .flex-group { display: flex; gap: 5px; }
-        
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        .flex-group {
+            display: flex;
+            gap: 5px;
+        }
+
         label {
             display: block;
-            font-size: 0.85rem;
+            font-size: 0.9rem;
             margin-bottom: 5px;
-            font-weight: bold;
-            color: #5f6368;
+            font-weight: 500;
         }
 
         input[type="password"],
         input[type="text"],
-        select {
+        select,
+        textarea {
             width: 100%;
-            padding: 8px;
+            padding: 10px;
             border: 1px solid var(--border-color);
             border-radius: 5px;
-            font-size: 0.9rem;
+            font-size: 0.95rem;
+        }
+
+        textarea {
+            resize: vertical;
         }
 
         .checkbox-group {
             display: flex;
             align-items: center;
-            font-size: 0.85rem;
+            font-size: 0.9rem;
             gap: 5px;
             margin-bottom: 15px;
-            color: #5f6368;
         }
 
-        button.btn {
+        details {
+            background: white;
+            padding: 10px;
+            border-radius: 5px;
+            border: 1px solid var(--border-color);
+            font-size: 0.85rem;
+            margin-bottom: 20px;
+        }
+
+        summary {
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        hr {
+            border: none;
+            border-top: 1px solid #ccc;
+            margin: 20px 0;
+        }
+
+        button {
             width: 100%;
-            padding: 8px;
+            padding: 10px;
             background-color: white;
             color: var(--text-color);
             border: 1px solid var(--border-color);
             border-radius: 5px;
             cursor: pointer;
-            font-size: 0.9rem;
+            font-size: 1rem;
             transition: 0.2s;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 5px;
         }
 
-        button.btn:hover { background-color: #f1f3f4; }
-        
-        button.btn.primary {
+        button:hover {
+            border-color: var(--primary-color);
+            color: var(--primary-color);
+        }
+
+        button.primary {
             background-color: var(--primary-color);
             color: white;
             border: none;
-            padding: 10px;
-            font-weight: bold;
-            font-size: 1rem;
-            margin-bottom: 10px;
-        }
-        button.btn.primary:hover { background-color: var(--primary-hover); }
-
-        /* ----- Googleアカウント & クラウド同期 ----- */
-        .account-box {
-            padding: 12px 20px;
-            border-bottom: 1px solid var(--border-color);
-        }
-
-        .account-signed-out, .account-signed-in {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-
-        .account-signed-in { display: none; }
-        .account-box.signed-in .account-signed-out { display: none; }
-        .account-box.signed-in .account-signed-in { display: flex; }
-
-        .account-avatar-img {
-            width: 28px; height: 28px;
-            border-radius: 50%;
-            flex-shrink: 0;
-        }
-
-        .account-email {
-            font-size: 0.8rem;
-            color: #5f6368;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            flex-grow: 1;
-        }
-
-        .signout-btn {
-            background: none; border: none;
-            font-size: 0.78rem;
-            color: var(--primary-color);
-            cursor: pointer;
-            flex-shrink: 0;
-            padding: 4px;
-        }
-        .signout-btn:hover { text-decoration: underline; }
-
-        .sync-status {
-            font-size: 0.75rem;
-            color: #9aa0a6;
-            margin-top: 6px;
-            display: flex;
-            align-items: center;
-            gap: 5px;
-            min-height: 16px;
-        }
-        .sync-status.syncing { color: var(--primary-color); }
-        .sync-status.error { color: var(--danger-color); }
-
-        /* 履歴リスト */
-        .history-container {
-            flex-grow: 1;
-            overflow-y: auto;
-            padding: 10px;
         }
         
-        .history-container h3 {
-            font-size: 0.85rem;
-            color: #5f6368;
-            margin: 10px 10px;
+        button.primary:hover {
+            background-color: #ff3333;
+            color: white;
         }
 
-        .history-list {
-            list-style: none;
-            padding: 0;
-            margin: 0;
-        }
-
-        .history-item {
+        .file-upload-wrapper {
+            border: 1px dashed var(--border-color);
             padding: 10px;
-            margin-bottom: 5px;
             border-radius: 5px;
-            cursor: pointer;
-            font-size: 0.9rem;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            transition: 0.2s;
+            background: white;
+            text-align: center;
         }
-
-        .history-item:hover { background-color: #e8eaed; }
-        .history-item.active {
-            background-color: #e8f0fe;
-            color: var(--primary-color);
-            font-weight: bold;
+        
+        .file-upload-wrapper input[type="file"] {
+            display: block;
+            width: 100%;
+            font-size: 0.85rem;
         }
-
-        .history-title {
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            flex-grow: 1;
-        }
-
-        .delete-history-btn {
-            background: none;
-            border: none;
-            color: #9aa0a6;
-            cursor: pointer;
-            padding: 5px;
-            display: flex;
-            align-items: center;
-        }
-        .delete-history-btn:hover { color: var(--danger-color); }
-        .delete-history-btn svg { width: 16px; height: 16px; fill: currentColor; }
 
         .close-sidebar-btn {
             display: none;
             position: absolute;
-            top: 10px;
-            right: 10px;
+            top: 20px;
+            right: 20px;
             background: none;
             border: none;
-            font-size: 1.5rem;
-            color: #5f6368;
+            font-size: 2rem;
+            color: #666;
+            padding: 0;
+            width: auto;
+            line-height: 1;
         }
 
         .sidebar-overlay {
@@ -272,194 +201,222 @@
 
         .header {
             flex-shrink: 0;
-            padding: 15px 20px;
+            padding: 20px 40px;
             border-bottom: 1px solid var(--border-color);
             display: flex;
             align-items: center;
-            background: rgba(255, 255, 255, 0.9);
-            backdrop-filter: blur(5px);
         }
 
         .menu-btn {
             display: none;
             background: none;
             border: none;
-            font-size: 1.5rem;
+            font-size: 1.8rem;
             cursor: pointer;
             margin-right: 15px;
-            color: #5f6368;
+            padding: 0;
+            width: auto;
+            color: var(--text-color);
         }
 
-        .header h1 { margin: 0; font-size: 1.3rem; }
+        .header h1 {
+            margin: 0;
+            font-size: 1.8rem;
+        }
+
+        .header p {
+            margin: 5px 0 0;
+            color: #666;
+            font-size: 0.9rem;
+            width: 100%;
+        }
+
+        #status-area {
+            flex-shrink: 0;
+        }
 
         /* チャット表示エリア */
         .chat-container {
             flex-grow: 1;
-            padding: 20px;
+            padding: 20px 40px;
             overflow-y: auto;
             display: flex;
             flex-direction: column;
             gap: 20px;
         }
 
-        .message { display: flex; gap: 15px; max-width: 850px; margin: 0 auto; width: 100%; }
-        .message.user { flex-direction: row-reverse; }
+        .message {
+            display: flex;
+            gap: 15px;
+            max-width: 800px;
+        }
+
+        .message.user {
+            align-self: flex-end;
+            flex-direction: row-reverse;
+        }
 
         .avatar {
-            width: 36px; height: 36px;
+            width: 35px;
+            height: 35px;
             border-radius: 50%;
-            display: flex; align-items: center; justify-content: center;
-            font-size: 1.2rem; flex-shrink: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2rem;
+            flex-shrink: 0;
         }
-        .user .avatar { background-color: var(--primary-color); color: white; }
-        .assistant .avatar { background-color: #10a37f; color: white; }
+
+        .user .avatar { background-color: #007bff; color: white; }
+        .assistant .avatar { background-color: #28a745; color: white; }
 
         .message-content {
-            padding: 12px 18px;
-            border-radius: 12px;
+            padding: 15px;
+            border-radius: 10px;
             font-size: 1rem;
             line-height: 1.6;
             overflow-x: auto;
-            max-width: calc(100% - 50px);
         }
 
         .user .message-content {
             background-color: var(--user-msg-bg);
             border: 1px solid #d0e1fd;
         }
+
         .assistant .message-content {
             background-color: var(--bot-msg-bg);
             border: 1px solid var(--border-color);
             width: 100%;
         }
 
-        .message-content p:first-child { margin-top: 0; }
-        .message-content p:last-child { margin-bottom: 0; }
-        
-        .message-content pre {
-            background: #282c34; color: #abb2bf;
-            padding: 10px; border-radius: 5px; overflow-x: auto;
-        }
-
         .message-content img.attached-image {
-            max-width: 300px;
+            max-width: 400px;
             width: 100%;
-            border-radius: 8px;
+            border-radius: 5px;
             margin-bottom: 10px;
-            border: 1px solid var(--border-color);
+            border: 1px solid #ccc;
         }
 
         .info-box {
-            background-color: #e8f4fd; border-left: 4px solid var(--primary-color);
-            padding: 15px; border-radius: 4px; margin: 20px auto; max-width: 600px;
-        }
-        .error-box {
-            background-color: #fde8e8; border-left: 4px solid var(--danger-color);
-            padding: 15px; border-radius: 4px; margin-top: 10px; font-size: 0.9rem;
+            background-color: #e8f4fd;
+            border-left: 4px solid #2196f3;
+            padding: 15px;
+            border-radius: 4px;
+            margin: 20px 40px;
+            white-space: pre-line;
         }
 
-        /* ----- チャット入力エリア ----- */
+        .error-box {
+            background-color: #fde8e8;
+            border-left: 4px solid #f44336;
+            padding: 15px;
+            border-radius: 4px;
+            margin-top: 10px;
+        }
+
+        /* ----- チャット入力エリア (常に下部に固定) ----- */
         .chat-input-wrapper {
             flex-shrink: 0;
-            padding: 15px 20px;
-            padding-bottom: calc(15px + env(safe-area-inset-bottom));
+            padding: 20px 40px;
+            padding-bottom: calc(20px + env(safe-area-inset-bottom));
             background-color: var(--bg-color);
             border-top: 1px solid var(--border-color);
         }
 
         .chat-input-form {
             display: flex;
-            flex-direction: column;
-            max-width: 850px;
-            margin: 0 auto;
-            position: relative;
-            background: #fff;
-            border: 1px solid var(--border-color);
-            border-radius: 12px;
-            box-shadow: 0 2px 6px rgba(0,0,0,0.05);
-        }
-        
-        .chat-input-form:focus-within { border-color: var(--primary-color); }
-
-        /* 画像プレビューエリア */
-        .preview-area {
-            display: none;
-            padding: 10px 15px 0;
-        }
-        .preview-item {
-            position: relative;
-            display: inline-block;
-        }
-        .preview-item img {
-            height: 60px;
-            border-radius: 6px;
-            border: 1px solid #ccc;
-        }
-        .preview-item .remove-btn {
-            position: absolute;
-            top: -5px; right: -5px;
-            background: #5f6368; color: white;
-            border: none; border-radius: 50%;
-            width: 20px; height: 20px;
-            font-size: 12px; cursor: pointer;
-            display: flex; align-items: center; justify-content: center;
-        }
-
-        .input-row {
-            display: flex;
             align-items: flex-end;
-            padding: 8px;
+            gap: 10px;
+            max-width: 800px;
+            margin: 0 auto;
         }
-
-        .attach-btn {
-            background: none; border: none; cursor: pointer;
-            padding: 8px; color: #5f6368; border-radius: 50%;
-            display: flex; align-items: center; justify-content: center;
-            transition: 0.2s; flex-shrink: 0;
-        }
-        .attach-btn:hover { background: #f1f3f4; color: var(--text-color); }
-        .attach-btn svg { width: 22px; height: 22px; fill: currentColor; }
 
         .chat-input-form textarea {
-            border: none; outline: none;
-            padding: 10px; flex-grow: 1;
-            resize: none; font-size: 1rem;
-            line-height: 1.5; min-height: 44px; max-height: 200px;
-            background: transparent;
+            border-radius: 8px;
+            padding: 12px 15px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+            border: 1px solid var(--border-color);
+            flex-grow: 1;
+            resize: none;
+            font-size: 1rem;
+            line-height: 1.5;
+            min-height: 48px;
+            max-height: 150px;
+            overflow-y: auto;
+            font-family: inherit;
         }
 
         .send-btn {
-            background: var(--primary-color); border: none;
-            color: white; cursor: pointer;
-            width: 36px; height: 36px; border-radius: 50%;
-            display: flex; align-items: center; justify-content: center;
-            transition: 0.2s; flex-shrink: 0; margin-bottom: 4px; margin-right: 4px;
+            background: none;
+            border: none;
+            padding: 0;
+            margin-bottom: 5px;
+            cursor: pointer;
+            flex-shrink: 0;
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
-        .send-btn:hover { background: var(--primary-hover); }
-        .send-btn:disabled { background: #e3e3e3; cursor: not-allowed; }
-        .send-btn svg { width: 18px; height: 18px; fill: currentColor; }
 
-        .spinner {
-            border: 3px solid rgba(0,0,0,0.1); border-radius: 50%;
-            border-top: 3px solid var(--primary-color);
-            width: 18px; height: 18px;
-            animation: spin 1s linear infinite; display: inline-block;
-            vertical-align: middle; margin-right: 8px;
+        .send-btn img {
+            width: 28px;
+            height: 28px;
+            transition: 0.2s;
         }
+
+        .send-btn:not(:disabled):hover img {
+            transform: scale(1.1);
+        }
+
+        .send-btn:disabled img {
+            opacity: 0.3;
+            cursor: not-allowed;
+        }
+
+        /* ----- ローディングスピナー ----- */
+        .spinner {
+            border: 3px solid rgba(0,0,0,0.1);
+            border-radius: 50%;
+            border-top: 3px solid var(--primary-color);
+            width: 20px;
+            height: 20px;
+            animation: spin 1s linear infinite;
+            display: inline-block;
+            vertical-align: middle;
+            margin-right: 10px;
+        }
+
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
 
-        /* モバイル対応 */
+        /* =========================================
+           モバイル対応
+           ========================================= */
         @media (max-width: 768px) {
             .sidebar {
-                position: fixed; height: 100dvh; left: 0; top: 0;
-                transform: translateX(-100%); width: 280px;
+                position: fixed;
+                height: 100dvh;
+                left: 0;
+                top: 0;
+                transform: translateX(-100%);
+                width: 280px;
             }
-            .sidebar.open { transform: translateX(0); }
-            .sidebar-overlay.open { display: block; }
+            .sidebar.open {
+                transform: translateX(0);
+            }
+            .sidebar-overlay.open {
+                display: block;
+            }
             .menu-btn { display: block; }
             .close-sidebar-btn { display: block; }
-            .message { gap: 10px; }
-            .avatar { width: 30px; height: 30px; font-size: 1rem; }
+            .header, .chat-container, .chat-input-wrapper {
+                padding-left: 20px;
+                padding-right: 20px;
+            }
+            .info-box { margin: 20px; }
+            .header h1 { font-size: 1.4rem; }
+            .header p { font-size: 0.8rem; }
         }
     </style>
 </head>
@@ -470,627 +427,303 @@
     <!-- サイドバー -->
     <div class="sidebar" id="sidebar">
         <button class="close-sidebar-btn" id="close-sidebar-btn">&times;</button>
+        <h2>🔑 APIキーの設定</h2>
         
-        <div class="account-box" id="account-box">
-            <div class="account-signed-out">
-                <div id="google-signin-btn"></div>
-            </div>
-            <div class="account-signed-in">
-                <img class="account-avatar-img" id="account-avatar" src="" alt="">
-                <span class="account-email" id="account-email"></span>
-                <button class="signout-btn" id="signout-btn">ログアウト</button>
-            </div>
-            <div class="sync-status" id="sync-status"></div>
+        <!-- APIキー入力部 -->
+        <div class="form-group flex-group">
+            <input type="password" id="api-key-input" placeholder="あなたのAPIキーを入力" style="flex-grow: 1; min-width: 0;">
+            <select id="api-key-dropdown" style="width: 100px; flex-shrink: 0;" title="保存されたAPIキーから選択">
+                <option value="">読込▼</option>
+            </select>
+        </div>
+        
+        <!-- APIキーを表示するチェックボックス -->
+        <div class="checkbox-group">
+            <input type="checkbox" id="show-key-checkbox">
+            <label for="show-key-checkbox" style="margin:0;">APIキーを表示</label>
         </div>
 
-        <div class="sidebar-header">
-            <button class="btn primary" id="new-chat-btn">
-                <svg style="width:18px;height:18px;fill:white;" viewBox="0 0 24 24"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>
-                新しいチャット
-            </button>
-            
-            <h2>⚙️ 設定</h2>
-            <div class="form-group flex-group">
-                <input type="password" id="api-key-input" placeholder="APIキーを入力" style="flex-grow: 1;">
-                <select id="api-key-dropdown" style="width: 80px;" title="保存されたAPIキー">
-                    <option value="">読込▼</option>
-                </select>
-            </div>
-            <div class="checkbox-group">
-                <input type="checkbox" id="show-key-checkbox">
-                <label for="show-key-checkbox" style="margin:0;">APIキーを表示</label>
+        <!-- APIキー保存ボタン -->
+        <div class="form-group">
+            <button type="button" id="save-key-btn">APIキーを保存</button>
+        </div>
+
+        <div class="form-group">
+            <label>Geminiのモデル名を選択</label>
+            <select id="model-select" title="上の選択肢ほど性能が良いですが、上の選択肢ほどすぐ使えなくなります。">
+                <option value="gemini-3.1-pro-preview">gemini-3.1-pro-preview</option>
+                <option value="gemini-3.5-flash" selected>gemini-3.5-flash</option>
+                <option value="gemini-3.1-flash-lite">gemini-3.1-flash-lite</option>
+                <option value="gemini-3-flash-preview">gemini-3-flash-preview</option>
+            </select>
+        </div>
+
+        <details>
+            <summary>🔰 APIキーの取得方法（無料）</summary>
+            <p><strong>「APIキー」</strong> とは、AIを使うための <strong>自分専用の合言葉（パスワード）</strong> のようなものです。<br>
+            Googleアカウントを持っていれば、以下の手順で<strong>誰でも無料で</strong>取得できます。</p>
+
+            <ol style="padding-left: 20px;">
+                <li><a href="https://aistudio.google.com/app/apikey" target="_blank">Google AI Studio</a> にアクセスします。</li>
+                <li>お持ちの <strong>Googleアカウントでログイン</strong> します。<br>
+                （利用規約の画面が出たら、チェックを入れて「続行」を押してください）</li>
+                <li>画面の右上あたりにある青いボタン <strong>「APIキーを作成」</strong> をクリックします。</li>
+                <li>続いて上から2つ目の枠 <strong>「インポートしたプロジェクトを選択」</strong> → <strong>「新しいプロジェクト」</strong> の順にクリックします。</li>
+                <li>「プロジェクトの名前」を入力します。<code>Gemmath</code>などでよいと思います。入力後、「プロジェクトを作成」を押します。</li>
+                <li><strong>「キーを作成」</strong> を押してしばらく待つと <strong>「APIキー」</strong> という長い文字列が表示されます。</li>
+                <li>文字列の横にある <strong>コピーボタン</strong> を押してキーをコピーし、左側の入力欄に貼り付けてください。</li>
+            </ol>
+
+            <p style="font-size: 0.8rem; color: red;">⚠️ <strong>注意</strong>: このキーは自分専用のパスワードと同じです。他人に教えたり、SNSに公開したりしないようご注意ください。</p>
+        </details>
+
+        <hr>
+
+        <h2>📝 新しい問題を解く</h2>
+        <p style="font-size: 0.85rem;">テキスト入力、または画像のアップロードで問題を指定してください。</p>
+        
+        <form id="new-problem-form">
+            <div class="form-group file-upload-wrapper">
+                <label>📸 問題の画像（任意）</label>
+                <input type="file" id="problem-image" accept="image/png, image/jpeg, image/jpg">
             </div>
             <div class="form-group">
-                <button type="button" class="btn" id="save-key-btn">キーを保存</button>
+                <label>✍️ 問題を手入力（または画像の補足）</label>
+                <textarea id="problem-text" rows="5" placeholder="例: 0<x<π/4におけるsin2x+cos4xの取りうる値の範囲を求めよ。&#10;画像の(2)だけを解説してください。"></textarea>
             </div>
-            
-            <div class="form-group" style="margin-bottom:0;">
-                <label>モデル選択</label>
-                <select id="model-select">
-                    <option value="gemini-3.5-flash">gemini-3.5-flash (高速・標準)</option>
-                    <option value="gemini-3.1-pro-preview">gemini-3.1-pro-preview (高性能)</option>
-                    <option value="gemini-3.1-flash-lite">gemini-3.1-flash-lite (軽量)</option>
-                </select>
-            </div>
-        </div>
-
-        <div class="history-container">
-            <h3>📝 チャット履歴</h3>
-            <ul class="history-list" id="history-list">
-                <!-- 履歴アイテムがここに追加されます -->
-            </ul>
-        </div>
+            <button type="submit" class="primary">この問題を解説させる</button>
+        </form>
     </div>
 
     <!-- メインコンテンツ -->
     <div class="main">
         <div class="header">
             <button class="menu-btn" id="menu-btn">☰</button>
-            <h1>💬 Gemini チャット</h1>
-        </div>
-
-        <div class="chat-container" id="chat-container">
-            <div class="info-box" id="initial-info">
-                <strong>Geminiチャットへようこそ！</strong><br><br>
-                1. 左側のサイドバーに <strong>Gemini APIキー</strong> を入力してください。<br>
-                2. 下の入力欄からメッセージを送信すると対話がスタートします。<br>
-                3. クリップのアイコンから<strong>画像を添付</strong>して質問することも可能です。<br><br>
-                ※左上で<strong>Googleログイン</strong>すると、チャット履歴があなたのGoogleドライブ（アプリ専用領域）に自動保存され、他の端末とも同期されます。ログインしない場合は、この端末のブラウザ内にのみ一時的に保存されます（容量に上限があります）。
+            <div>
+                <h1>📐 数学解説Gemini</h1>
+                <p>数学以外（普通のGemini）は<a href="gemini_chat.html">こちら</a></p>
             </div>
         </div>
 
-        <div class="chat-input-wrapper">
-            <form id="chat-input-form" class="chat-input-form">
+        <div id="status-area">
+            <div class="info-box" id="initial-info">
+                👈 左側のサイドバーに、ご自身のGemini APIキーを入力してスタートしてください。
                 
-                <!-- 画像プレビュー -->
-                <div class="preview-area" id="preview-area">
-                    <div class="preview-item">
-                        <img id="preview-img" src="" alt="添付画像">
-                        <button type="button" class="remove-btn" id="remove-img-btn">&times;</button>
-                    </div>
-                </div>
+                ※取得方法は左側の「🔰 APIキーの取得方法（無料）」を開いて確認できます。
+            </div>
+        </div>
 
-                <div class="input-row">
-                    <!-- 隠しファイル入力 -->
-                    <input type="file" id="file-input" accept="image/png, image/jpeg, image/jpg, image/webp" style="display: none;">
-                    
-                    <button type="button" class="attach-btn" id="attach-btn" title="画像を添付">
-                        <svg viewBox="0 0 24 24"><path d="M16.5 6v11.5c0 2.21-1.79 4-4 4s-4-1.79-4-4V5a2.5 2.5 0 0 1 5 0v10.5c0 .55-.45 1-1 1s-1-.45-1-1V6H10v11.5a2.5 2.5 0 0 0 5 0V5c0-1.93-1.57-3.5-3.5-3.5S8 3.07 8 5v12.5c0 3.04 2.46 5.5 5.5 5.5s5.5-2.46 5.5-5.5V6h-2.5z"/></svg>
-                    </button>
-                    
-                    <textarea id="chat-input" rows="1" placeholder="メッセージを入力... (Ctrl+Enterで送信)"></textarea>
-                    
-                    <button type="submit" id="chat-send-btn" class="send-btn" disabled title="送信 (Ctrl+Enter)">
-                        <svg viewBox="0 0 24 24"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
-                    </button>
-                </div>
+        <div class="chat-container" id="chat-container" style="display: none;">
+            <!-- チャットメッセージ -->
+        </div>
+
+        <div class="chat-input-wrapper" id="chat-input-wrapper" style="display: none;">
+            <form id="chat-input-form" class="chat-input-form">
+                <textarea id="chat-input" rows="1" placeholder="この解説について質問や気になる点があれば入力してください...&#13;&#10;（Enterで改行）" disabled></textarea>
+                <button type="submit" id="chat-send-btn" class="send-btn" disabled title="送信">
+                    <!-- send.png を読み込む -->
+                    <img src="send.png" alt="送信">
+                </button>
             </form>
         </div>
     </div>
 
     <script>
-        const SYSTEM_INSTRUCTION = "あなたは親切で有能なAIアシスタントです。ユーザーの質問や指示に丁寧に答えてください。";
+        const SYSTEM_INSTRUCTION = `
+## 質問者の状況
+私は、高校数学の教科書内容を全て学習し終えた、難関大学への合格を目指す理系の高校3年生です。
 
-        // ----- Google Drive 同期設定 -----
-        const GOOGLE_CLIENT_ID = "86513628730-q8nfg0e77u0ffgji1tem8ikt9ihvp8no.apps.googleusercontent.com";
-        // appDataFolder: ユーザーには見えないアプリ専用の隠しフォルダ（ドライブ本体を汚さない）
-        const GOOGLE_DRIVE_SCOPE = "https://www.googleapis.com/auth/drive.appdata";
-        const DRIVE_FILE_NAME = "gemini_chat_histories.json";
+## 解答者の条件
+あなたは、数学が苦手な私を、大学合格へ導く数学の優秀な教育者です。
 
-        let googleAccessToken = null;   // Drive APIアクセス用トークン（メモリ上のみ、保存しない）
-        let googleTokenClient = null;   // GISのトークンクライアント
-        let driveFileId = null;         // appDataFolder内の履歴ファイルのID（キャッシュ）
-        let isSignedIn = false;
-        let isSyncing = false;
-        let pendingCloudSave = false;   // 同期中に追加の保存要求が来た場合のフラグ
-        const LAST_SIGNIN_KEY = 'gemini_last_signed_in'; // 前回ログイン済みだったかの記録（トークン自体は保存しない）
+## 行動
+問題が入力されたら、次の手順通りに教えてください。
 
-        // UI要素
+## 手順
+1. まず、入力された問題を読み取ってください。問題が複数ある場合は、1問づつ分けた上で、以下手順を問題ごとに繰り返してください。
+2. 入力された問題を解くために必要な、教科書レベルの基礎知識を説明してください。
+3. 入力された問題を解く上での考え方を教えてください。
+4. 入力された問題の模範解答を、ステップに分けて作成してください。
+5. なぜその解法を選択したのか、その解法を選択する必然性を教えてください。その際、間違って選択してしまいがちな別の解法があれば、それを全て挙げて、それらはなぜ使用できないのか、どのような条件ならその解法を使用するかも解説してください。
+
+## 注意事項
+- 数式を出力する際は、必ずLaTeX形式（$ ... $ または $$ ... $$）を使用してください。
+- 三角関数は、sin, cos, tanのみを使用してください。sec, csc, cotなどは使用しないでください。
+- 計算は丁寧にしてください。計算ミスは許されません。
+- 記述解答を作る際、減点のない、完璧な答案を書いてください。
+- 「解法の必然性」は、別の問題を解くときに再現性があるように、丁寧に詳しく書いてください。
+`;
+
+        let chatHistory = []; 
+
         const sidebar = document.getElementById('sidebar');
         const sidebarOverlay = document.getElementById('sidebar-overlay');
         const menuBtn = document.getElementById('menu-btn');
         const closeSidebarBtn = document.getElementById('close-sidebar-btn');
-        const newChatBtn = document.getElementById('new-chat-btn');
-        const historyListEl = document.getElementById('history-list');
 
         const apiKeyInput = document.getElementById('api-key-input');
         const apiKeyDropdown = document.getElementById('api-key-dropdown');
         const showKeyCheckbox = document.getElementById('show-key-checkbox');
         const saveKeyBtn = document.getElementById('save-key-btn');
-        const modelSelect = document.getElementById('model-select');
         
-        const accountBox = document.getElementById('account-box');
-        const googleSigninBtnEl = document.getElementById('google-signin-btn');
-        const accountAvatar = document.getElementById('account-avatar');
-        const accountEmail = document.getElementById('account-email');
-        const signoutBtn = document.getElementById('signout-btn');
-        const syncStatusEl = document.getElementById('sync-status');
-
+        const modelSelect = document.getElementById('model-select');
+        const newProblemForm = document.getElementById('new-problem-form');
+        const problemImageInput = document.getElementById('problem-image');
+        const problemTextInput = document.getElementById('problem-text');
+        
+        const statusArea = document.getElementById('status-area');
         const initialInfo = document.getElementById('initial-info');
         const chatContainer = document.getElementById('chat-container');
+        const chatInputWrapper = document.getElementById('chat-input-wrapper');
+        const chatInputForm = document.getElementById('chat-input-form');
         const chatInput = document.getElementById('chat-input');
         const chatSendBtn = document.getElementById('chat-send-btn');
-        const chatInputForm = document.getElementById('chat-input-form');
-        
-        const attachBtn = document.getElementById('attach-btn');
-        const fileInput = document.getElementById('file-input');
-        const previewArea = document.getElementById('preview-area');
-        const previewImg = document.getElementById('preview-img');
-        const removeImgBtn = document.getElementById('remove-img-btn');
 
-        // 状態管理
-        let currentSessionId = null;
-        let currentMessages = []; // { role: 'user'|'model', text: '...', imageUrl: '...' }
-        let attachedImageData = null; // { base64, mimeType, dataUrl }
-
-        // --- サイドバー開閉 ---
-        function openSidebar() { sidebar.classList.add('open'); sidebarOverlay.classList.add('open'); }
-        function closeSidebar() { sidebar.classList.remove('open'); sidebarOverlay.classList.remove('open'); }
+        function openSidebar() {
+            sidebar.classList.add('open');
+            sidebarOverlay.classList.add('open');
+        }
+        function closeSidebar() {
+            sidebar.classList.remove('open');
+            sidebarOverlay.classList.remove('open');
+        }
         menuBtn.addEventListener('click', openSidebar);
         closeSidebarBtn.addEventListener('click', closeSidebar);
         sidebarOverlay.addEventListener('click', closeSidebar);
 
-        // ==================================================
-        // --- Googleログイン & Google Drive 同期処理 ---
-        // ==================================================
-
-        function setSyncStatus(text, mode) {
-            syncStatusEl.textContent = text || '';
-            syncStatusEl.className = 'sync-status' + (mode ? ' ' + mode : '');
-        }
-
-        // Google Identity Servicesの初期化（ライブラリの読み込み完了を待つ）
-        function initGoogleAuthWhenReady() {
-            if (typeof google === 'undefined' || !google.accounts) {
-                setTimeout(initGoogleAuthWhenReady, 200);
-                return;
-            }
-
-            // 「Sign in with Google」ボタン（ID Token取得用。ユーザー表示名/メール/アイコン取得のため）
-            google.accounts.id.initialize({
-                client_id: GOOGLE_CLIENT_ID,
-                callback: handleGoogleIdTokenResponse,
-            });
-            google.accounts.id.renderButton(googleSigninBtnEl, {
-                theme: 'outline',
-                size: 'medium',
-                text: 'signin_with',
-                shape: 'pill',
-            });
-
-            // Driveアクセス用のOAuthトークンクライアント（別途アクセストークンが必要）
-            googleTokenClient = google.accounts.oauth2.initTokenClient({
-                client_id: GOOGLE_CLIENT_ID,
-                scope: GOOGLE_DRIVE_SCOPE,
-                callback: handleAccessTokenResponse,
-            });
-
-            // 前回ログイン済みだった場合、ユーザー操作なしで裏側からサイレント再認証を試みる
-            if (localStorage.getItem(LAST_SIGNIN_KEY) === 'true') {
-                setSyncStatus('自動ログインを試みています...', 'syncing');
-                // prompt:'' により、Googleのセッションが有効ならポップアップ無しでトークンを取得できる
-                // （ブラウザのポップアップブロック回避のため、少し遅延させて呼び出す）
-                setTimeout(() => {
-                    googleTokenClient.requestAccessToken({ prompt: '' });
-                }, 300);
-            }
-        }
-
-        // 「Sign in with Google」ボタンが押されたときの処理（プロフィール情報の取得）
-        function handleGoogleIdTokenResponse(response) {
-            try {
-                const payload = JSON.parse(atob(response.credential.split('.')[1]));
-                accountEmail.textContent = payload.email || '';
-                accountAvatar.src = payload.picture || '';
-                accountBox.classList.add('signed-in');
-            } catch (e) {
-                console.error('Googleプロフィールの解析に失敗:', e);
-            }
-
-            // プロフィール表示に続けて、Drive操作用のアクセストークンを要求
-            googleTokenClient.requestAccessToken({ prompt: '' });
-        }
-
-        // Driveアクセストークンが取得できたときの処理
-        async function handleAccessTokenResponse(tokenResponse) {
-            if (tokenResponse.error) {
-                // サイレント認証が失敗した場合（Googleセッション切れ等）は、
-                // 静かに諦めて通常のログインボタン操作を待つ
-                localStorage.removeItem(LAST_SIGNIN_KEY);
-                setSyncStatus('', null);
-                return;
-            }
-            googleAccessToken = tokenResponse.access_token;
-            isSignedIn = true;
-            localStorage.setItem(LAST_SIGNIN_KEY, 'true');
-
-            // プロフィール（メール・アイコン）がまだ表示されていない場合は取得する
-            if (!accountBox.classList.contains('signed-in')) {
-                try {
-                    const profileRes = await fetch(
-                        'https://www.googleapis.com/oauth2/v3/userinfo',
-                        { headers: { Authorization: `Bearer ${googleAccessToken}` } }
-                    );
-                    if (profileRes.ok) {
-                        const profile = await profileRes.json();
-                        accountEmail.textContent = profile.email || '';
-                        accountAvatar.src = profile.picture || '';
-                        accountBox.classList.add('signed-in');
-                    }
-                } catch (e) {
-                    console.warn('プロフィール取得に失敗:', e);
-                }
-            }
-
-            setSyncStatus('クラウドの履歴を読み込み中...', 'syncing');
-            try {
-                const cloudSessions = await loadHistoriesFromDrive();
-                // クラウド側のデータで表示を更新（クラウドが正）
-                localStorage.setItem('gemini_chat_histories', JSON.stringify(cloudSessions));
-                renderHistoryList();
-                setSyncStatus('クラウドと同期済み', null);
-            } catch (e) {
-                console.error(e);
-                setSyncStatus('クラウド読み込みに失敗しました。', 'error');
-            }
-        }
-
-        signoutBtn.addEventListener('click', () => {
-            if (googleAccessToken) {
-                google.accounts.oauth2.revoke(googleAccessToken, () => {});
-            }
-            googleAccessToken = null;
-            driveFileId = null;
-            isSignedIn = false;
-            localStorage.removeItem(LAST_SIGNIN_KEY);
-            accountBox.classList.remove('signed-in');
-            setSyncStatus('', null);
-            google.accounts.id.disableAutoSelect();
+        chatInput.addEventListener('input', function() {
+            this.style.height = 'auto';
+            this.style.height = Math.min(this.scrollHeight, 150) + 'px';
         });
 
-        // ---- Drive appDataFolder 内のファイル探索 ----
-        async function findDriveFileId() {
-            if (driveFileId) return driveFileId;
-
-            const url = 'https://www.googleapis.com/drive/v3/files'
-                + '?spaces=appDataFolder'
-                + '&fields=files(id,name)'
-                + '&q=' + encodeURIComponent(`name='${DRIVE_FILE_NAME}'`);
-
-            const res = await fetch(url, {
-                headers: { Authorization: `Bearer ${googleAccessToken}` }
-            });
-            if (!res.ok) throw new Error('Drive検索に失敗しました。');
-            const data = await res.json();
-
-            if (data.files && data.files.length > 0) {
-                driveFileId = data.files[0].id;
-            } else {
-                driveFileId = null;
-            }
-            return driveFileId;
-        }
-
-        // ---- Driveから履歴読み込み ----
-        async function loadHistoriesFromDrive() {
-            const fileId = await findDriveFileId();
-            if (!fileId) return []; // まだ保存したことがない場合
-
-            const res = await fetch(
-                `https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`,
-                { headers: { Authorization: `Bearer ${googleAccessToken}` } }
-            );
-            if (!res.ok) throw new Error('Driveからの読み込みに失敗しました。');
-            const text = await res.text();
-            try {
-                return JSON.parse(text || '[]');
-            } catch (e) {
-                return [];
-            }
-        }
-
-        // ---- Driveへ履歴保存（新規作成 or 上書き更新） ----
-        async function saveHistoriesToDrive(histories) {
-            const fileId = await findDriveFileId();
-            const boundary = '-------gemini_chat_boundary';
-            const metadata = fileId
-                ? {}
-                : { name: DRIVE_FILE_NAME, parents: ['appDataFolder'] };
-
-            const body =
-                `--${boundary}\r\n` +
-                `Content-Type: application/json; charset=UTF-8\r\n\r\n` +
-                `${JSON.stringify(metadata)}\r\n` +
-                `--${boundary}\r\n` +
-                `Content-Type: application/json\r\n\r\n` +
-                `${JSON.stringify(histories)}\r\n` +
-                `--${boundary}--`;
-
-            const url = fileId
-                ? `https://www.googleapis.com/upload/drive/v3/files/${fileId}?uploadType=multipart`
-                : `https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart`;
-
-            const res = await fetch(url, {
-                method: fileId ? 'PATCH' : 'POST',
-                headers: {
-                    Authorization: `Bearer ${googleAccessToken}`,
-                    'Content-Type': `multipart/related; boundary=${boundary}`,
-                },
-                body,
-            });
-
-            if (!res.ok) throw new Error('Driveへの保存に失敗しました。');
-            const data = await res.json();
-            driveFileId = data.id;
-        }
-
-        // 現在の履歴一式をクラウドへ保存する（連続保存はまとめて実行）
-        async function syncHistoriesToCloudIfSignedIn() {
-            if (!isSignedIn || !googleAccessToken) return;
-
-            if (isSyncing) {
-                pendingCloudSave = true;
-                return;
-            }
-            isSyncing = true;
-            setSyncStatus('クラウドに保存中...', 'syncing');
-            try {
-                const histories = loadHistories();
-                await saveHistoriesToDrive(histories);
-                setSyncStatus('クラウドと同期済み', null);
-            } catch (e) {
-                console.error(e);
-                setSyncStatus('クラウド保存に失敗しました。', 'error');
-            } finally {
-                isSyncing = false;
-                if (pendingCloudSave) {
-                    pendingCloudSave = false;
-                    syncHistoriesToCloudIfSignedIn();
-                }
-            }
-        }
-
-        // --- APIキー管理 ---
+        // ----------------------------------------------------
+        // APIキー管理ロジック
+        // ----------------------------------------------------
         window.onload = () => {
+            // 以前のバージョン(単一保存)のデータがあれば移行する
+            const oldKey = localStorage.getItem('gemini_api_key');
+            if (oldKey) {
+                saveApiKeyToLocal(oldKey);
+                localStorage.removeItem('gemini_api_key');
+            }
+
+            // プルダウンのリストを更新
             updateApiKeyDropdown();
+
+            // 最後に使われたキー(配列の末尾)を入力欄にセットしておく
             const keys = JSON.parse(localStorage.getItem('gemini_api_keys') || '[]');
-            if (keys.length > 0) { apiKeyInput.value = keys[keys.length - 1]; }
-            renderHistoryList();
-            checkInputState();
-            initGoogleAuthWhenReady();
+            if (keys.length > 0) {
+                apiKeyInput.value = keys[keys.length - 1];
+                checkInitialState();
+            }
         };
 
-        function saveApiKeyToLocal(key) {
-            if (!key) return;
+        // ローカルストレージにAPIキーを保存(重複は無視)
+        function saveApiKeyToLocal(keyToSave) {
+            if (!keyToSave) return;
             let keys = JSON.parse(localStorage.getItem('gemini_api_keys') || '[]');
-            if (!keys.includes(key)) {
-                keys.push(key);
+            if (!keys.includes(keyToSave)) {
+                keys.push(keyToSave);
                 localStorage.setItem('gemini_api_keys', JSON.stringify(keys));
                 updateApiKeyDropdown();
             }
         }
 
+        // プルダウンの描画
         function updateApiKeyDropdown() {
             let keys = JSON.parse(localStorage.getItem('gemini_api_keys') || '[]');
+            
+            // 中身をリセット
             apiKeyDropdown.innerHTML = '<option value="">読込▼</option>';
+            
             keys.forEach(key => {
                 const option = document.createElement('option');
                 option.value = key;
+                // 変更箇所: 最後の8文字と...で表示するように変更
                 option.textContent = key.length > 8 ? '...' + key.slice(-8) : key;
                 apiKeyDropdown.appendChild(option);
             });
         }
 
+        // 「APIキーを保存」ボタンが押された時
         saveKeyBtn.addEventListener('click', () => {
             const currentKey = apiKeyInput.value.trim();
             if (currentKey) {
                 saveApiKeyToLocal(currentKey);
+                // 軽くボタンのテキストを変えて保存完了を知らせる
                 const originalText = saveKeyBtn.innerText;
-                saveKeyBtn.innerText = "✓ 保存済";
+                saveKeyBtn.innerText = "✓ 保存しました";
                 setTimeout(() => { saveKeyBtn.innerText = originalText; }, 2000);
             }
         });
 
+        // プルダウンからキーを選択した時
         apiKeyDropdown.addEventListener('change', () => {
             if (apiKeyDropdown.value) {
                 apiKeyInput.value = apiKeyDropdown.value;
-                apiKeyDropdown.selectedIndex = 0;
+                checkInitialState();
+                // 選択後は「読込▼」に戻しておく
+                apiKeyDropdown.selectedIndex = 0; 
             }
         });
 
+        // 「APIキーを表示」チェックボックスの切り替え
         showKeyCheckbox.addEventListener('change', () => {
             apiKeyInput.type = showKeyCheckbox.checked ? 'text' : 'password';
         });
 
-        // --- 履歴管理 ---
-        function loadHistories() {
-            return JSON.parse(localStorage.getItem('gemini_chat_histories') || '[]');
-        }
+        apiKeyInput.addEventListener('input', checkInitialState);
 
-        function saveHistories(histories) {
-            try {
-                localStorage.setItem('gemini_chat_histories', JSON.stringify(histories));
-            } catch (e) {
-                if (isSignedIn) {
-                    // クラウド保存が主なので、ローカルキャッシュの失敗は致命的ではない
-                    console.warn('ローカルキャッシュへの保存に失敗しましたが、クラウド保存を継続します。', e);
-                } else {
-                    alert("ブラウザの保存容量の上限に達しました。古い履歴を削除するか、Googleでログインしてクラウドに保存してください。");
-                }
+        // ----------------------------------------------------
+        // UI状態管理
+        // ----------------------------------------------------
+        function checkInitialState() {
+            if (apiKeyInput.value.trim() === '') {
+                initialInfo.innerText = "👈 左側のサイドバーに、ご自身のGemini APIキーを入力してスタートしてください。\n\n※取得方法は左側の「🔰 APIキーの取得方法（無料）」を開いて確認できます。";
+                initialInfo.style.display = 'block';
+                chatContainer.style.display = 'none';
+                chatInputWrapper.style.display = 'none';
+            } else if (chatHistory.length === 0) {
+                initialInfo.innerText = "👈 左側のサイドバーから数学の問題を入力、またはアップロードしてください。";
+                initialInfo.style.display = 'block';
+                chatContainer.style.display = 'none';
+                chatInputWrapper.style.display = 'none';
             }
         }
 
-        function saveCurrentSession() {
-            if (currentMessages.length === 0) return;
-            
-            let histories = loadHistories();
-            let sessionTitle = currentMessages[0].text ? currentMessages[0].text.substring(0, 20) : "画像からの質問";
-            
-            if (currentSessionId) {
-                const index = histories.findIndex(h => h.id === currentSessionId);
-                if (index !== -1) {
-                    histories[index].messages = currentMessages;
-                }
-            } else {
-                currentSessionId = Date.now();
-                histories.unshift({
-                    id: currentSessionId,
-                    title: sessionTitle,
-                    messages: currentMessages
-                });
-            }
-            saveHistories(histories);
-            renderHistoryList();
-            syncHistoriesToCloudIfSignedIn();
-        }
-
-        function renderHistoryList() {
-            const histories = loadHistories();
-            historyListEl.innerHTML = '';
-            
-            if (histories.length === 0) {
-                historyListEl.innerHTML = '<li style="font-size:0.85rem; color:#999; padding:10px;">履歴はありません</li>';
-                return;
-            }
-
-            histories.forEach(history => {
-                const li = document.createElement('li');
-                li.className = `history-item ${history.id === currentSessionId ? 'active' : ''}`;
-                
-                const titleSpan = document.createElement('span');
-                titleSpan.className = 'history-title';
-                titleSpan.textContent = history.title;
-                titleSpan.title = history.title;
-                
-                titleSpan.addEventListener('click', () => {
-                    loadSession(history.id);
-                    if (window.innerWidth <= 768) closeSidebar();
-                });
-
-                const deleteBtn = document.createElement('button');
-                deleteBtn.className = 'delete-history-btn';
-                deleteBtn.innerHTML = '<svg viewBox="0 0 24 24"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>';
-                deleteBtn.title = "削除";
-                deleteBtn.addEventListener('click', (e) => {
-                    e.stopPropagation();
-                    if (confirm("このチャット履歴を削除しますか？")) {
-                        deleteSession(history.id);
+        // ----------------------------------------------------
+        // ファイル処理・Markdown・API通信
+        // ----------------------------------------------------
+        function fileToBase64(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.readAsDataURL(file);
+                reader.onload = () => {
+                    let encoded = reader.result.toString().replace(/^data:(.*,)?/, '');
+                    if ((encoded.length % 4) > 0) {
+                        encoded += '='.repeat(4 - (encoded.length % 4));
                     }
-                });
-
-                li.appendChild(titleSpan);
-                li.appendChild(deleteBtn);
-                historyListEl.appendChild(li);
+                    resolve({ base64: encoded, mimeType: file.type, dataUrl: reader.result });
+                };
+                reader.onerror = error => reject(error);
             });
         }
 
-        function loadSession(id) {
-            const histories = loadHistories();
-            const session = histories.find(h => h.id === id);
-            if (session) {
-                currentSessionId = session.id;
-                currentMessages = session.messages;
-                
-                chatContainer.innerHTML = '';
-                initialInfo.style.display = 'none';
-                
-                currentMessages.forEach(msg => {
-                    appendMessageToUI(msg.role, msg.text, msg.imageUrl, false);
+        function renderMarkdownAndMath(text, containerElement, onComplete) {
+            containerElement.innerHTML = marked.parse(text);
+            if (window.MathJax) {
+                MathJax.typesetPromise([containerElement]).then(() => {
+                    if (onComplete) onComplete();
+                }).catch((err) => {
+                    console.log(err.message);
+                    if (onComplete) onComplete();
                 });
-                renderHistoryList();
-            }
-        }
-
-        function deleteSession(id) {
-            let histories = loadHistories();
-            histories = histories.filter(h => h.id !== id);
-            saveHistories(histories);
-            
-            if (currentSessionId === id) {
-                startNewChat();
             } else {
-                renderHistoryList();
+                if (onComplete) onComplete();
             }
-            syncHistoriesToCloudIfSignedIn();
         }
 
-        function startNewChat() {
-            currentSessionId = null;
-            currentMessages = [];
-            chatContainer.innerHTML = '';
-            chatContainer.appendChild(initialInfo);
-            initialInfo.style.display = 'block';
-            renderHistoryList();
-            removeAttachment();
-            chatInput.value = '';
-            checkInputState();
-            if (window.innerWidth <= 768) closeSidebar();
-        }
-
-        newChatBtn.addEventListener('click', startNewChat);
-
-        // --- 画像添付処理 ---
-        attachBtn.addEventListener('click', () => fileInput.click());
-
-        fileInput.addEventListener('change', (e) => {
-            const file = e.target.files[0];
-            if (!file) return;
-
-            const reader = new FileReader();
-            reader.readAsDataURL(file);
-            reader.onload = () => {
-                let encoded = reader.result.toString().replace(/^data:(.*,)?/, '');
-                if ((encoded.length % 4) > 0) encoded += '='.repeat(4 - (encoded.length % 4));
-                
-                attachedImageData = {
-                    base64: encoded,
-                    mimeType: file.type,
-                    dataUrl: reader.result
-                };
-                
-                previewImg.src = reader.result;
-                previewArea.style.display = 'block';
-                checkInputState();
-            };
-            fileInput.value = ''; 
-        });
-
-        removeImgBtn.addEventListener('click', removeAttachment);
-
-        function removeAttachment() {
-            attachedImageData = null;
-            previewArea.style.display = 'none';
-            previewImg.src = '';
-            checkInputState();
-        }
-
-        // --- チャット入力欄制御 (ショートカット変更) ---
-        chatInput.addEventListener('input', function() {
-            this.style.height = 'auto';
-            this.style.height = Math.min(this.scrollHeight, 200) + 'px';
-            checkInputState();
-        });
-
-        chatInput.addEventListener('keydown', function(e) {
-            // Ctrl + Enter (または Cmd + Enter) で送信
-            if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
-                e.preventDefault(); // デフォルトの改行を防ぐ
-                if (!chatSendBtn.disabled) {
-                    chatInputForm.dispatchEvent(new Event('submit'));
-                }
-            }
-            // Enter のみの場合は通常の改行が行われるため何もしない
-        });
-
-        function checkInputState() {
-            const text = chatInput.value.trim();
-            const hasApi = apiKeyInput.value.trim() !== '';
-            chatSendBtn.disabled = !(hasApi && (text || attachedImageData));
-        }
-        apiKeyInput.addEventListener('input', checkInputState);
-
-        // --- チャットUI構築 ---
-        function appendMessageToUI(role, text, imageUrl, animateScroll = true) {
+        function appendMessageToUI(role, contentText, imageUrl = null, scrollToTop = false) {
             const msgDiv = document.createElement('div');
             msgDiv.className = `message ${role}`;
             
@@ -1109,138 +742,195 @@
             }
             
             const textDiv = document.createElement('div');
-            textDiv.innerHTML = marked.parse(text || "");
-            contentDiv.appendChild(textDiv);
             
+            renderMarkdownAndMath(contentText, textDiv, () => {
+                if (scrollToTop) {
+                    msgDiv.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                } else {
+                    chatContainer.scrollTop = chatContainer.scrollHeight;
+                }
+            });
+            
+            contentDiv.appendChild(textDiv);
             msgDiv.appendChild(avatar);
             msgDiv.appendChild(contentDiv);
             chatContainer.appendChild(msgDiv);
             
-            // 数式のレンダリングを実行
-            if (window.MathJax) {
-                MathJax.typesetPromise([msgDiv]).catch((err) => console.log(err));
-            }
-            
-            if (animateScroll) {
-                msgDiv.scrollIntoView({ behavior: 'smooth', block: 'end' });
-            } else {
+            if (!scrollToTop) {
                 chatContainer.scrollTop = chatContainer.scrollHeight;
             }
+
             return msgDiv;
         }
 
         function showError(message) {
             const errorDiv = document.createElement('div');
             errorDiv.className = 'error-box';
-            errorDiv.innerHTML = `<strong>⚠️ エラー:</strong> ${message}`;
+            errorDiv.innerHTML = `<strong>⚠️ エラーが発生しました:</strong><br>${message}`;
             chatContainer.appendChild(errorDiv);
             chatContainer.scrollTop = chatContainer.scrollHeight;
         }
 
-        // --- Gemini API連携 ---
-        function buildApiPayload() {
-            const contents = currentMessages.map(msg => {
-                let parts = [];
-                if (msg.text) {
-                    parts.push({ text: msg.text });
-                }
-                if (msg.imageUrl) {
-                    const match = msg.imageUrl.match(/^data:(.*?);base64,(.*)$/);
-                    if (match) {
-                        parts.push({
-                            inlineData: {
-                                mimeType: match[1],
-                                data: match[2]
-                            }
-                        });
-                    }
-                }
-                return { role: msg.role, parts: parts };
+        async function callGeminiAPI() {
+            const apiKey = apiKeyInput.value.trim();
+            const model = modelSelect.value;
+            const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+
+            const payload = {
+                systemInstruction: { parts: [{ text: SYSTEM_INSTRUCTION }] },
+                contents: chatHistory,
+                generationConfig: { temperature: 0.2 }
+            };
+
+            const response = await fetch(url, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
             });
 
-            return {
-                systemInstruction: { parts: [{ text: SYSTEM_INSTRUCTION }] },
-                contents: contents,
-                generationConfig: { temperature: 0.7 }
-            };
+            const data = await response.json();
+
+            if (!response.ok) {
+                let errorMsg = data.error?.message || response.statusText;
+                if (response.status === 429) {
+                    errorMsg = "APIの利用制限に達しました。左側のメニューから「Geminiのモデル名」を下のものに変更するか、少し時間を置いてから再度お試しください。";
+                } else if (response.status === 400 && errorMsg.includes("API key not valid")) {
+                    errorMsg = "無効なAPIキーです。 取得したキーが正しく貼り付けられているか確認してください。";
+                }
+                throw new Error(errorMsg);
+            }
+
+            if (data.candidates && data.candidates[0].content && data.candidates[0].content.parts) {
+                return data.candidates[0].content.parts[0].text;
+            } else {
+                throw new Error("予期せぬレスポンス形式です。もう1度「この問題を解説させる」ボタンを押してみてください。");
+            }
         }
 
-        chatInputForm.addEventListener('submit', async (e) => {
+        // ----------------------------------------------------
+        // 新しい問題を解く (フォーム送信)
+        // ----------------------------------------------------
+        newProblemForm.addEventListener('submit', async (e) => {
             e.preventDefault();
             const apiKey = apiKeyInput.value.trim();
-            if (!apiKey) { alert("APIキーを入力してください。"); return; }
+            if (!apiKey) {
+                alert("APIキーを入力してください。");
+                return;
+            }
             
+            // 通信成功を期待して、利便性のため送信時にキーを自動保存しておく
             saveApiKeyToLocal(apiKey);
 
-            const promptText = chatInput.value.trim();
-            if (!promptText && !attachedImageData) return;
+            const textInput = problemTextInput.value.trim();
+            const fileInput = problemImageInput.files[0];
 
-            initialInfo.style.display = 'none';
+            if (!textInput && !fileInput) {
+                alert("問題のテキストか画像を入力してください。");
+                return;
+            }
 
-            const userMsg = {
-                role: 'user',
-                text: promptText,
-                imageUrl: attachedImageData ? attachedImageData.dataUrl : null
-            };
-            currentMessages.push(userMsg);
-            
-            appendMessageToUI('user', promptText, userMsg.imageUrl, true);
-            
-            chatInput.value = '';
-            chatInput.style.height = 'auto';
-            removeAttachment();
+            if (window.innerWidth <= 768) {
+                closeSidebar();
+            }
+
+            chatHistory = [];
+            chatContainer.innerHTML = '';
+            statusArea.style.display = 'none';
+            chatContainer.style.display = 'flex';
+            chatInputWrapper.style.display = 'block';
             chatInput.disabled = true;
             chatSendBtn.disabled = true;
 
+            let initialPromptText = "以下の問題を指示通りの手順で解説してください。\n\n";
+            if (textInput) {
+                initialPromptText += `【テキスト・指示】\n${textInput}\n`;
+            }
+            if (fileInput) {
+                initialPromptText += "【画像】\n添付した画像の問題を解いてください。";
+            }
+
+            let parts = [{ text: initialPromptText }];
+            let displayImageUrl = null;
+
+            try {
+                if (fileInput) {
+                    const fileData = await fileToBase64(fileInput);
+                    parts.push({
+                        inlineData: {
+                            data: fileData.base64,
+                            mimeType: fileData.mimeType
+                        }
+                    });
+                    displayImageUrl = fileData.dataUrl;
+                }
+
+                chatHistory.push({ role: "user", parts: parts });
+                appendMessageToUI('user', initialPromptText, displayImageUrl, false);
+
+                const loadingMsg = document.createElement('div');
+                loadingMsg.className = 'message assistant';
+                loadingMsg.innerHTML = `<div class="avatar">✨</div><div class="message-content"><div class="spinner"></div> AIが解答と解説を生成中です...</div>`;
+                chatContainer.appendChild(loadingMsg);
+                chatContainer.scrollTop = chatContainer.scrollHeight;
+
+                const responseText = await callGeminiAPI();
+
+                chatContainer.removeChild(loadingMsg);
+                chatHistory.push({ role: "model", parts: [{ text: responseText }] });
+                appendMessageToUI('assistant', responseText, null, true);
+
+                problemTextInput.value = '';
+                problemImageInput.value = '';
+
+            } catch (error) {
+                if (chatContainer.lastChild && chatContainer.lastChild.innerHTML.includes("生成中")) {
+                    chatContainer.removeChild(chatContainer.lastChild);
+                }
+                showError(error.message);
+                chatHistory.pop();
+            } finally {
+                chatInput.disabled = false;
+                chatSendBtn.disabled = false;
+                chatInput.focus();
+            }
+        });
+
+        // ----------------------------------------------------
+        // チャット入力 (フォーム送信)
+        // ----------------------------------------------------
+        chatInputForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const prompt = chatInput.value.trim();
+            if (!prompt) return;
+
+            chatInput.value = '';
+            chatInput.style.height = 'auto';
+            chatInput.disabled = true;
+            chatSendBtn.disabled = true;
+
+            chatHistory.push({ role: "user", parts: [{ text: prompt }] });
+            appendMessageToUI('user', prompt, null, false);
+
             const loadingMsg = document.createElement('div');
             loadingMsg.className = 'message assistant';
-            loadingMsg.innerHTML = `<div class="avatar">✨</div><div class="message-content"><div class="spinner"></div> 生成中...</div>`;
+            loadingMsg.innerHTML = `<div class="avatar">✨</div><div class="message-content"><div class="spinner"></div> 思考中...</div>`;
             chatContainer.appendChild(loadingMsg);
             chatContainer.scrollTop = chatContainer.scrollHeight;
 
             try {
-                const model = modelSelect.value;
-                const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
-                
-                const payload = buildApiPayload();
-
-                const response = await fetch(url, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(payload)
-                });
-
-                const data = await response.json();
-
-                if (!response.ok) {
-                    let errorMsg = data.error?.message || response.statusText;
-                    if (response.status === 429) errorMsg = "APIの利用制限に達しました。時間をおいてお試しください。";
-                    else if (response.status === 400 && errorMsg.includes("API key not valid")) errorMsg = "無効なAPIキーです。";
-                    throw new Error(errorMsg);
-                }
-
-                if (data.candidates && data.candidates[0].content && data.candidates[0].content.parts) {
-                    const responseText = data.candidates[0].content.parts[0].text;
-                    chatContainer.removeChild(loadingMsg);
-                    
-                    currentMessages.push({ role: 'model', text: responseText, imageUrl: null });
-                    appendMessageToUI('assistant', responseText, null, true);
-                    
-                    saveCurrentSession();
-                    
-                } else {
-                    throw new Error("予期せぬレスポンス形式です。");
-                }
-
+                const responseText = await callGeminiAPI();
+                chatContainer.removeChild(loadingMsg);
+                chatHistory.push({ role: "model", parts: [{ text: responseText }] });
+                appendMessageToUI('assistant', responseText, null, true);
             } catch (error) {
-                if (chatContainer.lastChild === loadingMsg) {
-                    chatContainer.removeChild(loadingMsg);
+                if (chatContainer.lastChild && chatContainer.lastChild.innerHTML.includes("思考中")) {
+                    chatContainer.removeChild(chatContainer.lastChild);
                 }
                 showError(error.message);
-                currentMessages.pop(); 
+                chatHistory.pop();
             } finally {
                 chatInput.disabled = false;
-                checkInputState();
+                chatSendBtn.disabled = false;
                 chatInput.focus();
             }
         });
