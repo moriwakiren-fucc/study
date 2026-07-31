@@ -581,10 +581,11 @@
         // appDataFolder: ユーザーには見えないアプリ専用の隠しフォルダ（ドライブ本体を汚さない）
         const GOOGLE_DRIVE_SCOPE = "https://www.googleapis.com/auth/drive.appdata";
         const DRIVE_FILE_NAME = "gemini_chat_histories.json";
+        const DRIVE_KEYS_FILE_NAME = "gemini_api_keys.json"; // APIキーは履歴と分離した別ファイルで同期
 
         let googleAccessToken = null;   // Drive APIアクセス用トークン（メモリ上のみ、保存しない）
         let googleTokenClient = null;   // GISのトークンクライアント
-        let driveFileId = null;         // appDataFolder内の履歴ファイルのID（キャッシュ）
+        let driveFileIds = {};          // ファイル名 -> Drive上のファイルID のキャッシュ（複数ファイル対応）
         let isSignedIn = false;
         let isSyncing = false;
         let pendingCloudSave = false;   // 同期中に追加の保存要求が来た場合のフラグ
@@ -733,6 +734,21 @@
                 // クラウド側のデータで表示を更新（クラウドが正）
                 localStorage.setItem('gemini_chat_histories', JSON.stringify(cloudSessions));
                 renderHistoryList();
+
+                // APIキーはこの端末のローカルキーとクラウド側をマージ（どちらの端末で登録したキーも失わない）
+                const cloudKeys = await loadApiKeysFromDrive();
+                const localKeys = JSON.parse(localStorage.getItem('gemini_api_keys') || '[]');
+                const mergedKeys = Array.from(new Set([...localKeys, ...cloudKeys]));
+                localStorage.setItem('gemini_api_keys', JSON.stringify(mergedKeys));
+                updateApiKeyDropdown();
+                if (mergedKeys.length > 0 && !apiKeyInput.value.trim()) {
+                    apiKeyInput.value = mergedKeys[mergedKeys.length - 1];
+                }
+                // マージ結果をクラウドにも書き戻しておく（他端末のキーが今後もこの端末に残るように）
+                if (mergedKeys.length !== cloudKeys.length) {
+                    await saveApiKeysToDrive(mergedKeys);
+                }
+
                 setSyncStatus('クラウドと同期済み', null);
             } catch (e) {
                 console.error(e);
@@ -745,7 +761,7 @@
                 google.accounts.oauth2.revoke(googleAccessToken, () => {});
             }
             googleAccessToken = null;
-            driveFileId = null;
+            driveFileIds = {};
             isSignedIn = false;
             localStorage.removeItem(LAST_SIGNIN_KEY);
             accountBox.classList.remove('signed-in');
@@ -753,14 +769,14 @@
             google.accounts.id.disableAutoSelect();
         });
 
-        // ---- Drive appDataFolder 内のファイル探索 ----
-        async function findDriveFileId() {
-            if (driveFileId) return driveFileId;
+        // ---- Drive appDataFolder 内のファイル探索（fileNameごとにID をキャッシュ） ----
+        async function findDriveFileId(fileName) {
+            if (driveFileIds[fileName]) return driveFileIds[fileName];
 
             const url = 'https://www.googleapis.com/drive/v3/files'
                 + '?spaces=appDataFolder'
                 + '&fields=files(id,name)'
-                + '&q=' + encodeURIComponent(`name='${DRIVE_FILE_NAME}'`);
+                + '&q=' + encodeURIComponent(`name='${fileName}'`);
 
             const res = await fetch(url, {
                 headers: { Authorization: `Bearer ${googleAccessToken}` }
@@ -769,17 +785,17 @@
             const data = await res.json();
 
             if (data.files && data.files.length > 0) {
-                driveFileId = data.files[0].id;
+                driveFileIds[fileName] = data.files[0].id;
             } else {
-                driveFileId = null;
+                driveFileIds[fileName] = null;
             }
-            return driveFileId;
+            return driveFileIds[fileName];
         }
 
-        // ---- Driveから履歴読み込み ----
-        async function loadHistoriesFromDrive() {
-            const fileId = await findDriveFileId();
-            if (!fileId) return []; // まだ保存したことがない場合
+        // ---- Driveからjsonデータを読み込み（汎用） ----
+        async function loadJsonFromDrive(fileName, fallback) {
+            const fileId = await findDriveFileId(fileName);
+            if (!fileId) return fallback; // まだ保存したことがない場合
 
             const res = await fetch(
                 `https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`,
@@ -788,19 +804,19 @@
             if (!res.ok) throw new Error('Driveからの読み込みに失敗しました。');
             const text = await res.text();
             try {
-                return JSON.parse(text || '[]');
+                return JSON.parse(text);
             } catch (e) {
-                return [];
+                return fallback;
             }
         }
 
-        // ---- Driveへ履歴保存（新規作成 or 上書き更新） ----
-        async function saveHistoriesToDrive(histories) {
-            const fileId = await findDriveFileId();
+        // ---- Driveへjsonデータを保存（新規作成 or 上書き更新、汎用） ----
+        async function saveJsonToDrive(fileName, data) {
+            const fileId = await findDriveFileId(fileName);
             const boundary = '-------gemini_chat_boundary';
             const metadata = fileId
                 ? {}
-                : { name: DRIVE_FILE_NAME, parents: ['appDataFolder'] };
+                : { name: fileName, parents: ['appDataFolder'] };
 
             const body =
                 `--${boundary}\r\n` +
@@ -808,7 +824,7 @@
                 `${JSON.stringify(metadata)}\r\n` +
                 `--${boundary}\r\n` +
                 `Content-Type: application/json\r\n\r\n` +
-                `${JSON.stringify(histories)}\r\n` +
+                `${JSON.stringify(data)}\r\n` +
                 `--${boundary}--`;
 
             const url = fileId
@@ -825,8 +841,24 @@
             });
 
             if (!res.ok) throw new Error('Driveへの保存に失敗しました。');
-            const data = await res.json();
-            driveFileId = data.id;
+            const result = await res.json();
+            driveFileIds[fileName] = result.id;
+        }
+
+        // ---- 履歴専用のラッパー（既存コードとの互換用） ----
+        async function loadHistoriesFromDrive() {
+            return await loadJsonFromDrive(DRIVE_FILE_NAME, []);
+        }
+        async function saveHistoriesToDrive(histories) {
+            await saveJsonToDrive(DRIVE_FILE_NAME, histories);
+        }
+
+        // ---- APIキー専用のラッパー ----
+        async function loadApiKeysFromDrive() {
+            return await loadJsonFromDrive(DRIVE_KEYS_FILE_NAME, []);
+        }
+        async function saveApiKeysToDrive(keys) {
+            await saveJsonToDrive(DRIVE_KEYS_FILE_NAME, keys);
         }
 
         // 現在の履歴一式をクラウドへ保存する（連続保存はまとめて実行）
@@ -855,6 +887,17 @@
             }
         }
 
+        // 登録済みAPIキー一覧をクラウドへ保存する
+        async function syncApiKeysToCloudIfSignedIn() {
+            if (!isSignedIn || !googleAccessToken) return;
+            try {
+                const keys = JSON.parse(localStorage.getItem('gemini_api_keys') || '[]');
+                await saveApiKeysToDrive(keys);
+            } catch (e) {
+                console.error('APIキーのクラウド保存に失敗:', e);
+            }
+        }
+
         // --- APIキー管理 ---
         window.onload = () => {
             updateApiKeyDropdown();
@@ -872,6 +915,7 @@
                 keys.push(key);
                 localStorage.setItem('gemini_api_keys', JSON.stringify(keys));
                 updateApiKeyDropdown();
+                syncApiKeysToCloudIfSignedIn();
             }
         }
 
