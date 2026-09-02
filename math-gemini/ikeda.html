@@ -1,0 +1,796 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>📐 Geminiの脳みそを借りるサイト　(理系数学版)</title>
+    
+    <!-- マークダウン解析用ライブラリ -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    
+    <!-- 数式(LaTeX)描画用ライブラリ(MathJax) -->
+    <script>
+        MathJax = {
+            tex: {
+                inlineMath: [['$', '$'], ['\\(', '\\)']],
+                displayMath: [['$$', '$$'], ['\\[', '\\]']],
+                processEscapes: true
+            },
+            options: {
+                skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code']
+            }
+        };
+    </script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+
+    <style>
+        :root {
+            --bg-color: #ffffff;
+            --sidebar-bg: #f0f2f6;
+            --text-color: #31333f;
+            --border-color: #dcdcdc;
+            --primary-color: #ff4b4b;
+            --user-msg-bg: #e8f0fe;
+            --bot-msg-bg: #f9f9f9;
+        }
+
+        * {
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Meiryo, system-ui, -apple-system, sans-serif;
+        }
+
+        body {
+            margin: 0;
+            display: flex;
+            height: 100dvh;
+            color: var(--text-color);
+            background-color: var(--bg-color);
+            overflow: hidden;
+        }
+
+        /* ----- サイドバー ----- */
+        .sidebar {
+            width: 330px;
+            background-color: var(--sidebar-bg);
+            padding: 100px 20px;
+            overflow-y: auto;
+            border-right: 1px solid var(--border-color);
+            flex-shrink: 0;
+            position: relative;
+            z-index: 1000;
+            transition: transform 0.3s ease;
+        }
+
+        .sidebar h2 {
+            font-size: 1.1rem;
+            margin-top: 0;
+            margin-bottom: 15px;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        .flex-group {
+            display: flex;
+            gap: 5px;
+        }
+
+        label {
+            display: block;
+            font-size: 0.9rem;
+            margin-bottom: 5px;
+            font-weight: 500;
+        }
+
+        input[type="password"],
+        input[type="text"],
+        select,
+        textarea {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid var(--border-color);
+            border-radius: 5px;
+            font-size: 0.95rem;
+        }
+
+        textarea {
+            resize: vertical;
+        }
+
+        .checkbox-group {
+            display: flex;
+            align-items: center;
+            font-size: 0.9rem;
+            gap: 5px;
+            margin-bottom: 15px;
+        }
+
+        details {
+            background: white;
+            padding: 10px;
+            border-radius: 5px;
+            border: 1px solid var(--border-color);
+            font-size: 0.85rem;
+            margin-bottom: 20px;
+        }
+
+        summary {
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        hr {
+            border: none;
+            border-top: 1px solid #ccc;
+            margin: 20px 0;
+        }
+
+        button {
+            width: 100%;
+            padding: 10px;
+            background-color: white;
+            color: var(--text-color);
+            border: 1px solid var(--border-color);
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 1rem;
+            transition: 0.2s;
+        }
+
+        button:hover {
+            border-color: var(--primary-color);
+            color: var(--primary-color);
+        }
+
+        button.primary {
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+        }
+        
+        button.primary:hover {
+            background-color: #ff3333;
+            color: white;
+        }
+
+        .file-upload-wrapper {
+            border: 1px dashed var(--border-color);
+            padding: 10px;
+            border-radius: 5px;
+            background: white;
+            text-align: center;
+        }
+        
+        .file-upload-wrapper input[type="file"] {
+            display: block;
+            width: 100%;
+            font-size: 0.85rem;
+        }
+
+        .close-sidebar-btn {
+            display: none;
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: none;
+            border: none;
+            font-size: 2rem;
+            color: #666;
+            padding: 0;
+            width: auto;
+            line-height: 1;
+        }
+
+        .sidebar-overlay {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.5);
+            z-index: 999;
+        }
+
+        /* ----- メインコンテンツ ----- */
+        .main {
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+            min-width: 0;
+            height: 100dvh;
+        }
+
+        .header {
+            flex-shrink: 0;
+            padding: 20px 40px;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            align-items: center;
+        }
+
+        .menu-btn {
+            display: none;
+            background: none;
+            border: none;
+            font-size: 1.8rem;
+            cursor: pointer;
+            margin-right: 15px;
+            padding: 0;
+            width: auto;
+            color: var(--text-color);
+        }
+
+        .header h1 {
+            margin: 0;
+            font-size: 1.8rem;
+        }
+
+        .header p {
+            margin: 5px 0 0;
+            color: #666;
+            font-size: 0.9rem;
+            width: 100%;
+        }
+
+        #status-area {
+            flex-shrink: 0;
+        }
+
+        /* チャット表示エリア */
+        .chat-container {
+            flex-grow: 1;
+            padding: 20px 40px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .message {
+            display: flex;
+            gap: 15px;
+            max-width: 800px;
+        }
+
+        .message.user {
+            align-self: flex-end;
+            flex-direction: row-reverse;
+        }
+
+        .avatar {
+            width: 35px;
+            height: 35px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2rem;
+            flex-shrink: 0;
+        }
+
+        .user .avatar { background-color: #007bff; color: white; }
+        .assistant .avatar { background-color: #28a745; color: white; }
+
+        .message-content {
+            padding: 15px;
+            border-radius: 10px;
+            font-size: 1rem;
+            line-height: 1.6;
+            overflow-x: auto;
+        }
+
+        .user .message-content {
+            background-color: var(--user-msg-bg);
+            border: 1px solid #d0e1fd;
+        }
+
+        .assistant .message-content {
+            background-color: var(--bot-msg-bg);
+            border: 1px solid var(--border-color);
+            width: 100%;
+        }
+
+        .message-content img.attached-image {
+            max-width: 400px;
+            width: 100%;
+            border-radius: 5px;
+            margin-bottom: 10px;
+            border: 1px solid #ccc;
+        }
+
+        .info-box {
+            background-color: #e8f4fd;
+            border-left: 4px solid #2196f3;
+            padding: 15px;
+            border-radius: 4px;
+            margin: 20px 40px;
+            white-space: pre-line;
+        }
+
+        .error-box {
+            background-color: #fde8e8;
+            border-left: 4px solid #f44336;
+            padding: 15px;
+            border-radius: 4px;
+            margin-top: 10px;
+        }
+
+        /* ----- チャット入力エリア (常に下部に固定) ----- */
+        .chat-input-wrapper {
+            flex-shrink: 0;
+            padding: 20px 40px;
+            padding-bottom: calc(20px + env(safe-area-inset-bottom));
+            background-color: var(--bg-color);
+            border-top: 1px solid var(--border-color);
+        }
+
+        .chat-input-form {
+            display: flex;
+            align-items: flex-end;
+            gap: 10px;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        .chat-input-form textarea {
+            border-radius: 8px;
+            padding: 12px 15px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+            border: 1px solid var(--border-color);
+            flex-grow: 1;
+            resize: none;
+            font-size: 1rem;
+            line-height: 1.5;
+            min-height: 48px;
+            max-height: 150px;
+            overflow-y: auto;
+            font-family: inherit;
+        }
+
+        .send-btn {
+            background: none;
+            border: none;
+            padding: 0;
+            margin-bottom: 5px;
+            cursor: pointer;
+            flex-shrink: 0;
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .send-btn img {
+            width: 28px;
+            height: 28px;
+            transition: 0.2s;
+        }
+
+        .send-btn:not(:disabled):hover img {
+            transform: scale(1.1);
+        }
+
+        .send-btn:disabled img {
+            opacity: 0.3;
+            cursor: not-allowed;
+        }
+
+        /* ----- ローディングスピナー ----- */
+        .spinner {
+            border: 3px solid rgba(0,0,0,0.1);
+            border-radius: 50%;
+            border-top: 3px solid var(--primary-color);
+            width: 20px;
+            height: 20px;
+            animation: spin 1s linear infinite;
+            display: inline-block;
+            vertical-align: middle;
+            margin-right: 10px;
+        }
+
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+        /* =========================================
+           モバイル対応
+           ========================================= */
+        @media (max-width: 768px) {
+            .sidebar {
+                position: fixed;
+                height: 100dvh;
+                left: 0;
+                top: 0;
+                transform: translateX(-100%);
+                width: 280px;
+            }
+            .sidebar.open {
+                transform: translateX(0);
+            }
+            .sidebar-overlay.open {
+                display: block;
+            }
+            .menu-btn { display: block; }
+            .close-sidebar-btn { display: block; }
+            .header, .chat-container, .chat-input-wrapper {
+                padding-left: 20px;
+                padding-right: 20px;
+            }
+            .info-box { margin: 20px; }
+            .header h1 { font-size: 1.4rem; }
+            .header p { font-size: 0.8rem; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="sidebar-overlay" id="sidebar-overlay"></div>
+
+    <!-- サイドバー -->
+    <div class="sidebar" id="sidebar">
+        <button class="close-sidebar-btn" id="close-sidebar-btn">&times;</button>
+        <h2>🔑 APIキーの設定</h2>
+        
+        <!-- APIキー入力部 -->
+        <div class="form-group flex-group">
+            <input type="password" id="api-key-input" placeholder="あなたのAPIキーを入力" style="flex-grow: 1; min-width: 0;">
+            <select id="api-key-dropdown" style="width: 100px; flex-shrink: 0;" title="保存されたAPIキーから選択">
+                <option value="">読込▼</option>
+            </select>
+        </div>
+        
+        <!-- APIキーを表示するチェックボックス -->
+        <div class="checkbox-group">
+            <input type="checkbox" id="show-key-checkbox">
+            <label for="show-key-checkbox" style="margin:0;">APIキーを表示</label>
+        </div>
+
+        <!-- APIキー保存ボタン -->
+        <div class="form-group">
+            <button type="button" id="save-key-btn">APIキーを保存</button>
+        </div>
+
+        <div class="form-group">
+            <label>Geminiのモデル名を選択</label>
+            <select id="model-select" title="上の選択肢ほど性能が良いですが、上の選択肢ほどすぐ使えなくなります。">
+                <option value="gemini-3.1-pro-preview">gemini-3.1-pro-preview</option>
+                <option value="gemini-3.8-flash">gemini-3.8-flash</option>
+                <option value="gemini-3.7-flash" selected>gemini-3.7-flash</option>
+                <option value="gemini-3.6-flash">gemini-3.6-flash</option>
+                <option value="gemini-3.5-flash">gemini-3.5-flash</option>
+                <option value="gemini-3.1-flash-lite">gemini-3.1-flash-lite</option>
+                <option value="gemini-3-flash-preview">gemini-3-flash-preview</option>
+            </select>
+        </div>
+
+        <details>
+            <summary>🔰 APIキーの取得方法（無料）</summary>
+            <p><strong>「APIキー」</strong> とは、AIを使うための <strong>自分専用の合言葉（パスワード）</strong> のようなものです。<br>
+            Googleアカウントを持っていれば、以下の手順で<strong>誰でも無料で</strong>取得できます。</p>
+
+            <ol style="padding-left: 20px;">
+                <li><a href="https://aistudio.google.com/app/apikey" target="_blank">Google AI Studio</a> にアクセスします。</li>
+                <li>お持ちの <strong>Googleアカウントでログイン</strong> します。<br>
+                （利用規約の画面が出たら、チェックを入れて「続行」を押してください）</li>
+                <li>画面の右上あたりにある青いボタン <strong>「APIキーを作成」</strong> をクリックします。</li>
+                <li>続いて上から2つ目の枠 <strong>「インポートしたプロジェクトを選択」</strong> → <strong>「新しいプロジェクト」</strong> の順にクリックします。</li>
+                <li>「プロジェクトの名前」を入力します。<code>Gemmath</code>などでよいと思います。入力後、「プロジェクトを作成」を押します。</li>
+                <li><strong>「キーを作成」</strong> を押してしばらく待つと <strong>「APIキー」</strong> という長い文字列が表示されます。</li>
+                <li>文字列の横にある <strong>コピーボタン</strong> を押してキーをコピーし、左側の入力欄に貼り付けてください。</li>
+            </ol>
+
+            <p style="font-size: 0.8rem; color: red;">⚠️ <strong>注意</strong>: このキーは自分専用のパスワードと同じです。他人に教えたり、SNSに公開したりしないようご注意ください。</p>
+        </details>
+
+        <hr>
+
+        <h2>📝 新しい問題を解く</h2>
+        <p style="font-size: 0.85rem;">テキスト入力、または画像のアップロードで問題を指定してください。</p>
+        
+        <form id="new-problem-form">
+            <div class="form-group file-upload-wrapper">
+                <label>📸 問題の画像（任意）</label>
+                <input type="file" id="problem-image" accept="image/png, image/jpeg, image/jpg">
+            </div>
+            <div class="form-group">
+                <label>✍️ 問題を手入力（または画像の補足）</label>
+                <textarea id="problem-text" rows="5" placeholder="例: 0<x<π/4におけるsin2x+cos4xの取りうる値の範囲を求めよ。&#10;画像の(2)だけを解説してください。"></textarea>
+            </div>
+            <button type="submit" class="primary">この問題を解説させる</button>
+        </form>
+    </div>
+
+    <!-- メインコンテンツ -->
+    <div class="main">
+        <div class="header">
+            <button class="menu-btn" id="menu-btn">☰</button>
+            <div>
+                <h1>📐 Geminiの脳みそを借りるサイト　(理系数学版)</h1>
+                <p>文系数学版は<a href="bunkei.html">こちら</a><br>数学以外（普通のGemini）は<a href="gemini_chat.html">こちら</a></p>
+            </div>
+        </div>
+
+        <div id="status-area">
+            <div class="info-box" id="initial-info">
+                👈 左側のサイドバーに、ご自身のGemini APIキーを入力してスタートしてください。
+                
+                ※取得方法は左側の「🔰 APIキーの取得方法（無料）」を開いて確認できます。
+            </div>
+        </div>
+
+        <div class="chat-container" id="chat-container" style="display: none;">
+            <!-- チャットメッセージ -->
+        </div>
+
+        <div class="chat-input-wrapper" id="chat-input-wrapper" style="display: none;">
+            <form id="chat-input-form" class="chat-input-form">
+                <textarea id="chat-input" rows="1" placeholder="この解説について質問や気になる点があれば入力してください...&#13;&#10;（Enterで改行）" disabled></textarea>
+                <button type="submit" id="chat-send-btn" class="send-btn" disabled title="送信">
+                    <!-- send.png を読み込む -->
+                    <img src="send.png" alt="送信">
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <script>
+// ----------------------------------------------------
+        // Gemini API呼び出し (ストリーミング & 5分タイムアウト)
+        // ----------------------------------------------------
+        async function callGeminiAPIStream(onChunk) {
+            const apiKey = apiKeyInput.value.trim();
+            const model = modelSelect.value;
+            // streamGenerateContent エンドポイント + alt=sse を使用
+            const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:streamGenerateContent?alt=sse&key=${apiKey}`;
+
+            const payload = {
+                systemInstruction: { parts: [{ text: SYSTEM_INSTRUCTION }] },
+                contents: chatHistory,
+                generationConfig: { temperature: 0.2 }
+            };
+
+            // タイムアウトを 5分 (300,000 ms) に設定
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 300000);
+
+            try {
+                const response = await fetch(url, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload),
+                    signal: controller.signal
+                });
+
+                clearTimeout(timeoutId);
+
+                if (!response.ok) {
+                    const data = await response.json().catch(() => ({}));
+                    let errorMsg = data.error?.message || response.statusText;
+                    if (response.status === 429) {
+                        errorMsg = "APIの利用制限に達しました。左側のメニューから「Geminiのモデル名」を変更するか、少し時間を置いてから再度お試しください。";
+                    } else if (response.status === 400 && errorMsg.includes("API key not valid")) {
+                        errorMsg = "無効なAPIキーです。取得したキーが正しく貼り付けられているか確認してください。";
+                    }
+                    throw new Error(errorMsg);
+                }
+
+                // SSEストリームの受信とパース
+                const reader = response.body.getReader();
+                const decoder = new TextDecoder("utf-8");
+                let fullText = "";
+                let buffer = "";
+
+                while (true) {
+                    const { done, value } = await reader.read();
+                    if (done) break;
+
+                    buffer += decoder.decode(value, { stream: true });
+                    const lines = buffer.split("\n");
+                    buffer = lines.pop(); // 未完の行をバッファに残す
+
+                    for (const line of lines) {
+                        if (line.startsWith("data: ")) {
+                            const jsonStr = line.replace(/^data:\s*/, "").trim();
+                            if (jsonStr === "[DONE]") continue;
+                            try {
+                                const parsed = JSON.parse(jsonStr);
+                                const chunkText = parsed.candidates?.[0]?.content?.parts?.[0]?.text || "";
+                                if (chunkText) {
+                                    fullText += chunkText;
+                                    onChunk(fullText); // リアルタイム描画コールバック
+                                }
+                            } catch (e) {
+                                console.warn("JSON parse error:", e);
+                            }
+                        }
+                    }
+                }
+
+                return fullText;
+
+            } catch (error) {
+                clearTimeout(timeoutId);
+                if (error.name === 'AbortError') {
+                    throw new Error("応答時間が制限時間（5分）を超過したため処理を中断しました。");
+                }
+                throw error;
+            }
+        }
+
+        // ----------------------------------------------------
+        // UI用のストリーミングメッセージ要素作成 helper
+        // ----------------------------------------------------
+        function createAssistantMessageUI() {
+            const msgDiv = document.createElement('div');
+            msgDiv.className = 'message assistant';
+            
+            const avatar = document.createElement('div');
+            avatar.className = 'avatar';
+            avatar.innerText = '✨';
+            
+            const contentDiv = document.createElement('div');
+            contentDiv.className = 'message-content';
+            
+            const textDiv = document.createElement('div');
+            textDiv.innerHTML = '<div class="spinner"></div> AIが思考中...';
+
+            contentDiv.appendChild(textDiv);
+            msgDiv.appendChild(avatar);
+            msgDiv.appendChild(contentDiv);
+            chatContainer.appendChild(msgDiv);
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+
+            // マークダウン＆MathJaxレンダリング関数のリクエストデバウンス処理
+            let mathJaxTimer = null;
+            
+            return {
+                msgDiv,
+                updateText: (currentText) => {
+                    textDiv.innerHTML = marked.parse(currentText);
+                    chatContainer.scrollTop = chatContainer.scrollHeight;
+
+                    // 数式描画は入力頻度が高すぎると重くなるため、デバウンスしてレンダリング
+                    if (mathJaxTimer) clearTimeout(mathJaxTimer);
+                    mathJaxTimer = setTimeout(() => {
+                        if (window.MathJax) {
+                            MathJax.typesetPromise([textDiv]).catch(err => console.log(err.message));
+                        }
+                    }, 300);
+                },
+                finalize: () => {
+                    if (mathJaxTimer) clearTimeout(mathJaxTimer);
+                    if (window.MathJax) {
+                        MathJax.typesetPromise([textDiv]).catch(err => console.log(err.message));
+                    }
+                }
+            };
+        }
+
+        // ----------------------------------------------------
+        // 新しい問題を解く (フォーム送信)
+        // ----------------------------------------------------
+        newProblemForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const apiKey = apiKeyInput.value.trim();
+            if (!apiKey) {
+                alert("APIキーを入力してください。");
+                return;
+            }
+            
+            saveApiKeyToLocal(apiKey);
+
+            const textInput = problemTextInput.value.trim();
+            const fileInput = problemImageInput.files[0];
+
+            if (!textInput && !fileInput) {
+                alert("問題のテキストか画像を入力してください。");
+                return;
+            }
+
+            if (window.innerWidth <= 768) {
+                closeSidebar();
+            }
+
+            chatHistory = [];
+            chatContainer.innerHTML = '';
+            statusArea.style.display = 'none';
+            chatContainer.style.display = 'flex';
+            chatInputWrapper.style.display = 'block';
+            chatInput.disabled = true;
+            chatSendBtn.disabled = true;
+
+            let initialPromptText = "以下の問題を指示通りの手順で解説してください。\n\n";
+            if (textInput) {
+                initialPromptText += `【テキスト・指示】\n${textInput}\n`;
+            }
+            if (fileInput) {
+                initialPromptText += "【画像】\n添付した画像の問題を解いてください。";
+            }
+
+            let parts = [{ text: initialPromptText }];
+            let displayImageUrl = null;
+
+            let assistantUI = null;
+            try {
+                if (fileInput) {
+                    const fileData = await fileToBase64(fileInput);
+                    parts.push({
+                        inlineData: {
+                            data: fileData.base64,
+                            mimeType: fileData.mimeType
+                        }
+                    });
+                    displayImageUrl = fileData.dataUrl;
+                }
+
+                chatHistory.push({ role: "user", parts: parts });
+                appendMessageToUI('user', initialPromptText, displayImageUrl, false);
+
+                // ストリーミング用UIを準備
+                assistantUI = createAssistantMessageUI();
+
+                // ストリーミング実行
+                const responseText = await callGeminiAPIStream((streamedText) => {
+                    assistantUI.updateText(streamedText);
+                });
+
+                assistantUI.finalize();
+                chatHistory.push({ role: "model", parts: [{ text: responseText }] });
+
+                problemTextInput.value = '';
+                problemImageInput.value = '';
+
+            } catch (error) {
+                if (assistantUI && assistantUI.msgDiv.parentNode) {
+                    chatContainer.removeChild(assistantUI.msgDiv);
+                }
+                showError(error.message);
+                chatHistory.pop();
+            } finally {
+                chatInput.disabled = false;
+                chatSendBtn.disabled = false;
+                chatInput.focus();
+            }
+        });
+
+        // ----------------------------------------------------
+        // チャット入力 (フォーム送信)
+        // ----------------------------------------------------
+        chatInputForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const prompt = chatInput.value.trim();
+            if (!prompt) return;
+
+            chatInput.value = '';
+            chatInput.style.height = 'auto';
+            chatInput.disabled = true;
+            chatSendBtn.disabled = true;
+
+            chatHistory.push({ role: "user", parts: [{ text: prompt }] });
+            appendMessageToUI('user', prompt, null, false);
+
+            let assistantUI = null;
+            try {
+                // ストリーミング用UIを準備
+                assistantUI = createAssistantMessageUI();
+
+                // ストリーミング実行
+                const responseText = await callGeminiAPIStream((streamedText) => {
+                    assistantUI.updateText(streamedText);
+                });
+
+                assistantUI.finalize();
+                chatHistory.push({ role: "model", parts: [{ text: responseText }] });
+            } catch (error) {
+                if (assistantUI && assistantUI.msgDiv.parentNode) {
+                    chatContainer.removeChild(assistantUI.msgDiv);
+                }
+                showError(error.message);
+                chatHistory.pop();
+            } finally {
+                chatInput.disabled = false;
+                chatSendBtn.disabled = false;
+                chatInput.focus();
+            }
+        });
+    </script>
+</body>
+</html>
