@@ -532,253 +532,14 @@
     </div>
 
     <script>
-        const SYSTEM_INSTRUCTION = `
-## 質問者の状況
-私は、高校数学の教科書内容を全て学習し終えた、難関大学への合格を目指す理系の高校3年生です。
-
-## 解答者の条件
-あなたは、数学が苦手な私を、大学合格へ導く数学の優秀な教育者です。
-
-## 行動
-問題が入力されたら、次の手順通りに教えてください。
-
-## 手順
-1. まず、入力された問題を読み取ってください。問題が複数ある場合は、1問ずつ分けた上で、以下手順を問題ごとに繰り返してください。
-2. 入力された問題を解くために必要な、教科書レベルの基礎知識を説明してください。
-3. 入力された問題を解く上での考え方を教えてください。
-4. 入力された問題の模範解答を、ステップに分けて作成してください。
-5. 別解があれば、それらを全て挙げてください。
-6. 本解・別解の全てについて、なぜその解法を選択したのか、その解法を選択する必然性を教えてください。その際、間違って選択してしまいがちな別の解法があれば、それを全て挙げて、それらはなぜ使用できないのか、どのような条件ならその解法を使用するかも解説してください。
-
-## 注意事項
-- 数式を出力する際は、必ずLaTeX形式（$ ... $ または $$ ... $$）を使用してください。
-- 三角関数は、sin, cos, tanのみを使用してください。sec, csc, cotなどは使用しないでください。
-- 計算は丁寧にしてください。計算ミスは許されません。
-- 記述解答を作る際、減点のない、完璧な答案を書いてください。
-- 「解法の必然性」は、別の問題を解くときに再現性があるように、丁寧に詳しく書いてください。
-`;
-
-        let chatHistory = []; 
-
-        const sidebar = document.getElementById('sidebar');
-        const sidebarOverlay = document.getElementById('sidebar-overlay');
-        const menuBtn = document.getElementById('menu-btn');
-        const closeSidebarBtn = document.getElementById('close-sidebar-btn');
-
-        const apiKeyInput = document.getElementById('api-key-input');
-        const apiKeyDropdown = document.getElementById('api-key-dropdown');
-        const showKeyCheckbox = document.getElementById('show-key-checkbox');
-        const saveKeyBtn = document.getElementById('save-key-btn');
-        
-        const modelSelect = document.getElementById('model-select');
-        const newProblemForm = document.getElementById('new-problem-form');
-        const problemImageInput = document.getElementById('problem-image');
-        const problemTextInput = document.getElementById('problem-text');
-        
-        const statusArea = document.getElementById('status-area');
-        const initialInfo = document.getElementById('initial-info');
-        const chatContainer = document.getElementById('chat-container');
-        const chatInputWrapper = document.getElementById('chat-input-wrapper');
-        const chatInputForm = document.getElementById('chat-input-form');
-        const chatInput = document.getElementById('chat-input');
-        const chatSendBtn = document.getElementById('chat-send-btn');
-
-        function openSidebar() {
-            sidebar.classList.add('open');
-            sidebarOverlay.classList.add('open');
-        }
-        function closeSidebar() {
-            sidebar.classList.remove('open');
-            sidebarOverlay.classList.remove('open');
-        }
-        menuBtn.addEventListener('click', openSidebar);
-        closeSidebarBtn.addEventListener('click', closeSidebar);
-        sidebarOverlay.addEventListener('click', closeSidebar);
-
-        chatInput.addEventListener('input', function() {
-            this.style.height = 'auto';
-            this.style.height = Math.min(this.scrollHeight, 150) + 'px';
-        });
-
+// ----------------------------------------------------
+        // Gemini API呼び出し (ストリーミング & 5分タイムアウト)
         // ----------------------------------------------------
-        // APIキー管理ロジック
-        // ----------------------------------------------------
-        window.onload = () => {
-            // 以前のバージョン(単一保存)のデータがあれば移行する
-            const oldKey = localStorage.getItem('gemini_api_key');
-            if (oldKey) {
-                saveApiKeyToLocal(oldKey);
-                localStorage.removeItem('gemini_api_key');
-            }
-
-            // プルダウンのリストを更新
-            updateApiKeyDropdown();
-
-            // 最後に使われたキー(配列の末尾)を入力欄にセットしておく
-            const keys = JSON.parse(localStorage.getItem('gemini_api_keys') || '[]');
-            if (keys.length > 0) {
-                apiKeyInput.value = keys[keys.length - 1];
-                checkInitialState();
-            }
-        };
-
-        // ローカルストレージにAPIキーを保存(重複は無視)
-        function saveApiKeyToLocal(keyToSave) {
-            if (!keyToSave) return;
-            let keys = JSON.parse(localStorage.getItem('gemini_api_keys') || '[]');
-            if (!keys.includes(keyToSave)) {
-                keys.push(keyToSave);
-                localStorage.setItem('gemini_api_keys', JSON.stringify(keys));
-                updateApiKeyDropdown();
-            }
-        }
-
-        // プルダウンの描画
-        function updateApiKeyDropdown() {
-            let keys = JSON.parse(localStorage.getItem('gemini_api_keys') || '[]');
-            
-            // 中身をリセット
-            apiKeyDropdown.innerHTML = '<option value="">読込▼</option>';
-            
-            keys.forEach(key => {
-                const option = document.createElement('option');
-                option.value = key;
-                // 変更箇所: 最後の8文字と...で表示するように変更
-                option.textContent = key.length > 8 ? '...' + key.slice(-8) : key;
-                apiKeyDropdown.appendChild(option);
-            });
-        }
-
-        // 「APIキーを保存」ボタンが押された時
-        saveKeyBtn.addEventListener('click', () => {
-            const currentKey = apiKeyInput.value.trim();
-            if (currentKey) {
-                saveApiKeyToLocal(currentKey);
-                // 軽くボタンのテキストを変えて保存完了を知らせる
-                const originalText = saveKeyBtn.innerText;
-                saveKeyBtn.innerText = "✓ 保存しました";
-                setTimeout(() => { saveKeyBtn.innerText = originalText; }, 2000);
-            }
-        });
-
-        // プルダウンからキーを選択した時
-        apiKeyDropdown.addEventListener('change', () => {
-            if (apiKeyDropdown.value) {
-                apiKeyInput.value = apiKeyDropdown.value;
-                checkInitialState();
-                // 選択後は「読込▼」に戻しておく
-                apiKeyDropdown.selectedIndex = 0; 
-            }
-        });
-
-        // 「APIキーを表示」チェックボックスの切り替え
-        showKeyCheckbox.addEventListener('change', () => {
-            apiKeyInput.type = showKeyCheckbox.checked ? 'text' : 'password';
-        });
-
-        apiKeyInput.addEventListener('input', checkInitialState);
-
-        // ----------------------------------------------------
-        // UI状態管理
-        // ----------------------------------------------------
-        function checkInitialState() {
-            if (apiKeyInput.value.trim() === '') {
-                initialInfo.innerText = "👈 左側のサイドバーに、ご自身のGemini APIキーを入力してスタートしてください。\n\n※取得方法は左側の「🔰 APIキーの取得方法（無料）」を開いて確認できます。";
-                initialInfo.style.display = 'block';
-                chatContainer.style.display = 'none';
-                chatInputWrapper.style.display = 'none';
-            } else if (chatHistory.length === 0) {
-                initialInfo.innerText = "👈 左側のサイドバーから数学の問題を入力、またはアップロードしてください。";
-                initialInfo.style.display = 'block';
-                chatContainer.style.display = 'none';
-                chatInputWrapper.style.display = 'none';
-            }
-        }
-
-        // ----------------------------------------------------
-        // ファイル処理・Markdown・API通信
-        // ----------------------------------------------------
-        function fileToBase64(file) {
-            return new Promise((resolve, reject) => {
-                const reader = new FileReader();
-                reader.readAsDataURL(file);
-                reader.onload = () => {
-                    let encoded = reader.result.toString().replace(/^data:(.*,)?/, '');
-                    if ((encoded.length % 4) > 0) {
-                        encoded += '='.repeat(4 - (encoded.length % 4));
-                    }
-                    resolve({ base64: encoded, mimeType: file.type, dataUrl: reader.result });
-                };
-                reader.onerror = error => reject(error);
-            });
-        }
-
-        function renderMarkdownAndMath(text, containerElement, onComplete) {
-            containerElement.innerHTML = marked.parse(text);
-            if (window.MathJax) {
-                MathJax.typesetPromise([containerElement]).then(() => {
-                    if (onComplete) onComplete();
-                }).catch((err) => {
-                    console.log(err.message);
-                    if (onComplete) onComplete();
-                });
-            } else {
-                if (onComplete) onComplete();
-            }
-        }
-
-        function appendMessageToUI(role, contentText, imageUrl = null, scrollToTop = false) {
-            const msgDiv = document.createElement('div');
-            msgDiv.className = `message ${role}`;
-            
-            const avatar = document.createElement('div');
-            avatar.className = 'avatar';
-            avatar.innerText = role === 'user' ? '👤' : '✨';
-            
-            const contentDiv = document.createElement('div');
-            contentDiv.className = 'message-content';
-            
-            if (imageUrl) {
-                const img = document.createElement('img');
-                img.src = imageUrl;
-                img.className = 'attached-image';
-                contentDiv.appendChild(img);
-            }
-            
-            const textDiv = document.createElement('div');
-            
-            renderMarkdownAndMath(contentText, textDiv, () => {
-                if (scrollToTop) {
-                    msgDiv.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                } else {
-                    chatContainer.scrollTop = chatContainer.scrollHeight;
-                }
-            });
-            
-            contentDiv.appendChild(textDiv);
-            msgDiv.appendChild(avatar);
-            msgDiv.appendChild(contentDiv);
-            chatContainer.appendChild(msgDiv);
-            
-            if (!scrollToTop) {
-                chatContainer.scrollTop = chatContainer.scrollHeight;
-            }
-
-            return msgDiv;
-        }
-
-        function showError(message) {
-            const errorDiv = document.createElement('div');
-            errorDiv.className = 'error-box';
-            errorDiv.innerHTML = `<strong>⚠️ エラーが発生しました:</strong><br>${message}`;
-            chatContainer.appendChild(errorDiv);
-            chatContainer.scrollTop = chatContainer.scrollHeight;
-        }
-
-        async function callGeminiAPI() {
+        async function callGeminiAPIStream(onChunk) {
             const apiKey = apiKeyInput.value.trim();
             const model = modelSelect.value;
-            const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+            // streamGenerateContent エンドポイント + alt=sse を使用
+            const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:streamGenerateContent?alt=sse&key=${apiKey}`;
 
             const payload = {
                 systemInstruction: { parts: [{ text: SYSTEM_INSTRUCTION }] },
@@ -786,29 +547,121 @@
                 generationConfig: { temperature: 0.2 }
             };
 
-            const response = await fetch(url, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload)
-            });
+            // タイムアウトを 5分 (300,000 ms) に設定
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 300000);
 
-            const data = await response.json();
+            try {
+                const response = await fetch(url, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload),
+                    signal: controller.signal
+                });
 
-            if (!response.ok) {
-                let errorMsg = data.error?.message || response.statusText;
-                if (response.status === 429) {
-                    errorMsg = "APIの利用制限に達しました。左側のメニューから「Geminiのモデル名」を下のものに変更するか、少し時間を置いてから再度お試しください。";
-                } else if (response.status === 400 && errorMsg.includes("API key not valid")) {
-                    errorMsg = "無効なAPIキーです。 取得したキーが正しく貼り付けられているか確認してください。";
+                clearTimeout(timeoutId);
+
+                if (!response.ok) {
+                    const data = await response.json().catch(() => ({}));
+                    let errorMsg = data.error?.message || response.statusText;
+                    if (response.status === 429) {
+                        errorMsg = "APIの利用制限に達しました。左側のメニューから「Geminiのモデル名」を変更するか、少し時間を置いてから再度お試しください。";
+                    } else if (response.status === 400 && errorMsg.includes("API key not valid")) {
+                        errorMsg = "無効なAPIキーです。取得したキーが正しく貼り付けられているか確認してください。";
+                    }
+                    throw new Error(errorMsg);
                 }
-                throw new Error(errorMsg);
-            }
 
-            if (data.candidates && data.candidates[0].content && data.candidates[0].content.parts) {
-                return data.candidates[0].content.parts[0].text;
-            } else {
-                throw new Error("予期せぬレスポンス形式です。もう1度「この問題を解説させる」ボタンを押してみてください。");
+                // SSEストリームの受信とパース
+                const reader = response.body.getReader();
+                const decoder = new TextDecoder("utf-8");
+                let fullText = "";
+                let buffer = "";
+
+                while (true) {
+                    const { done, value } = await reader.read();
+                    if (done) break;
+
+                    buffer += decoder.decode(value, { stream: true });
+                    const lines = buffer.split("\n");
+                    buffer = lines.pop(); // 未完の行をバッファに残す
+
+                    for (const line of lines) {
+                        if (line.startsWith("data: ")) {
+                            const jsonStr = line.replace(/^data:\s*/, "").trim();
+                            if (jsonStr === "[DONE]") continue;
+                            try {
+                                const parsed = JSON.parse(jsonStr);
+                                const chunkText = parsed.candidates?.[0]?.content?.parts?.[0]?.text || "";
+                                if (chunkText) {
+                                    fullText += chunkText;
+                                    onChunk(fullText); // リアルタイム描画コールバック
+                                }
+                            } catch (e) {
+                                console.warn("JSON parse error:", e);
+                            }
+                        }
+                    }
+                }
+
+                return fullText;
+
+            } catch (error) {
+                clearTimeout(timeoutId);
+                if (error.name === 'AbortError') {
+                    throw new Error("応答時間が制限時間（5分）を超過したため処理を中断しました。");
+                }
+                throw error;
             }
+        }
+
+        // ----------------------------------------------------
+        // UI用のストリーミングメッセージ要素作成 helper
+        // ----------------------------------------------------
+        function createAssistantMessageUI() {
+            const msgDiv = document.createElement('div');
+            msgDiv.className = 'message assistant';
+            
+            const avatar = document.createElement('div');
+            avatar.className = 'avatar';
+            avatar.innerText = '✨';
+            
+            const contentDiv = document.createElement('div');
+            contentDiv.className = 'message-content';
+            
+            const textDiv = document.createElement('div');
+            textDiv.innerHTML = '<div class="spinner"></div> AIが思考中...';
+
+            contentDiv.appendChild(textDiv);
+            msgDiv.appendChild(avatar);
+            msgDiv.appendChild(contentDiv);
+            chatContainer.appendChild(msgDiv);
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+
+            // マークダウン＆MathJaxレンダリング関数のリクエストデバウンス処理
+            let mathJaxTimer = null;
+            
+            return {
+                msgDiv,
+                updateText: (currentText) => {
+                    textDiv.innerHTML = marked.parse(currentText);
+                    chatContainer.scrollTop = chatContainer.scrollHeight;
+
+                    // 数式描画は入力頻度が高すぎると重くなるため、デバウンスしてレンダリング
+                    if (mathJaxTimer) clearTimeout(mathJaxTimer);
+                    mathJaxTimer = setTimeout(() => {
+                        if (window.MathJax) {
+                            MathJax.typesetPromise([textDiv]).catch(err => console.log(err.message));
+                        }
+                    }, 300);
+                },
+                finalize: () => {
+                    if (mathJaxTimer) clearTimeout(mathJaxTimer);
+                    if (window.MathJax) {
+                        MathJax.typesetPromise([textDiv]).catch(err => console.log(err.message));
+                    }
+                }
+            };
         }
 
         // ----------------------------------------------------
@@ -822,7 +675,6 @@
                 return;
             }
             
-            // 通信成功を期待して、利便性のため送信時にキーを自動保存しておく
             saveApiKeyToLocal(apiKey);
 
             const textInput = problemTextInput.value.trim();
@@ -856,6 +708,7 @@
             let parts = [{ text: initialPromptText }];
             let displayImageUrl = null;
 
+            let assistantUI = null;
             try {
                 if (fileInput) {
                     const fileData = await fileToBase64(fileInput);
@@ -871,24 +724,23 @@
                 chatHistory.push({ role: "user", parts: parts });
                 appendMessageToUI('user', initialPromptText, displayImageUrl, false);
 
-                const loadingMsg = document.createElement('div');
-                loadingMsg.className = 'message assistant';
-                loadingMsg.innerHTML = `<div class="avatar">✨</div><div class="message-content"><div class="spinner"></div> AIが解答と解説を生成中です...</div>`;
-                chatContainer.appendChild(loadingMsg);
-                chatContainer.scrollTop = chatContainer.scrollHeight;
+                // ストリーミング用UIを準備
+                assistantUI = createAssistantMessageUI();
 
-                const responseText = await callGeminiAPI();
+                // ストリーミング実行
+                const responseText = await callGeminiAPIStream((streamedText) => {
+                    assistantUI.updateText(streamedText);
+                });
 
-                chatContainer.removeChild(loadingMsg);
+                assistantUI.finalize();
                 chatHistory.push({ role: "model", parts: [{ text: responseText }] });
-                appendMessageToUI('assistant', responseText, null, true);
 
                 problemTextInput.value = '';
                 problemImageInput.value = '';
 
             } catch (error) {
-                if (chatContainer.lastChild && chatContainer.lastChild.innerHTML.includes("生成中")) {
-                    chatContainer.removeChild(chatContainer.lastChild);
+                if (assistantUI && assistantUI.msgDiv.parentNode) {
+                    chatContainer.removeChild(assistantUI.msgDiv);
                 }
                 showError(error.message);
                 chatHistory.pop();
@@ -915,20 +767,21 @@
             chatHistory.push({ role: "user", parts: [{ text: prompt }] });
             appendMessageToUI('user', prompt, null, false);
 
-            const loadingMsg = document.createElement('div');
-            loadingMsg.className = 'message assistant';
-            loadingMsg.innerHTML = `<div class="avatar">✨</div><div class="message-content"><div class="spinner"></div> 思考中...</div>`;
-            chatContainer.appendChild(loadingMsg);
-            chatContainer.scrollTop = chatContainer.scrollHeight;
-
+            let assistantUI = null;
             try {
-                const responseText = await callGeminiAPI();
-                chatContainer.removeChild(loadingMsg);
+                // ストリーミング用UIを準備
+                assistantUI = createAssistantMessageUI();
+
+                // ストリーミング実行
+                const responseText = await callGeminiAPIStream((streamedText) => {
+                    assistantUI.updateText(streamedText);
+                });
+
+                assistantUI.finalize();
                 chatHistory.push({ role: "model", parts: [{ text: responseText }] });
-                appendMessageToUI('assistant', responseText, null, true);
             } catch (error) {
-                if (chatContainer.lastChild && chatContainer.lastChild.innerHTML.includes("思考中")) {
-                    chatContainer.removeChild(chatContainer.lastChild);
+                if (assistantUI && assistantUI.msgDiv.parentNode) {
+                    chatContainer.removeChild(assistantUI.msgDiv);
                 }
                 showError(error.message);
                 chatHistory.pop();
