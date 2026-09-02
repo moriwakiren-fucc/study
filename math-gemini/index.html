@@ -532,8 +532,7 @@
     </div>
 
     <script>
-        const SYSTEM_INSTRUCTION = `
-## 質問者の状況
+        const SYSTEM_INSTRUCTION = `## 質問者の状況
 私は、高校数学の教科書内容を全て学習し終えた、難関大学への合格を目指す理系の高校3年生です。
 
 ## 解答者の条件
@@ -555,8 +554,7 @@
 - 三角関数は、sin, cos, tanのみを使用してください。sec, csc, cotなどは使用しないでください。
 - 計算は丁寧にしてください。計算ミスは許されません。
 - 記述解答を作る際、減点のない、完璧な答案を書いてください。
-- 「解法の必然性」は、別の問題を解くときに再現性があるように、丁寧に詳しく書いてください。
-`;
+- 「解法の必然性」は、別の問題を解くときに再現性があるように、丁寧に詳しく書いてください。`;
 
         let chatHistory = []; 
 
@@ -588,7 +586,7 @@
             sidebarOverlay.classList.add('open');
         }
         function closeSidebar() {
-            sidebar.classList.remove('open');
+            sidebar.classList.remove('remove');
             sidebarOverlay.classList.remove('open');
         }
         menuBtn.addEventListener('click', openSidebar);
@@ -601,7 +599,7 @@
         });
 
         // ----------------------------------------------------
-        // APIキー管理ロジック
+        // APIキー管理
         // ----------------------------------------------------
         window.onload = () => {
             const oldKey = localStorage.getItem('gemini_api_key');
@@ -683,7 +681,7 @@
         }
 
         // ----------------------------------------------------
-        // ファイル処理・Markdown・API通信
+        // ファイル処理・Markdown
         // ----------------------------------------------------
         function fileToBase64(file) {
             return new Promise((resolve, reject) => {
@@ -702,11 +700,10 @@
 
         function renderMarkdownAndMath(text, containerElement, onComplete) {
             containerElement.innerHTML = marked.parse(text);
-            if (window.MathJax) {
+            if (window.MathJax && window.MathJax.typesetPromise) {
                 MathJax.typesetPromise([containerElement]).then(() => {
                     if (onComplete) onComplete();
                 }).catch((err) => {
-                    console.log(err.message);
                     if (onComplete) onComplete();
                 });
             } else {
@@ -714,7 +711,7 @@
             }
         }
 
-        function appendMessageToUI(role, contentText, imageUrl = null, scrollToTop = false) {
+        function appendMessageToUI(role, contentText, imageUrl = null) {
             const msgDiv = document.createElement('div');
             msgDiv.className = `message ${role}`;
             
@@ -733,23 +730,15 @@
             }
             
             const textDiv = document.createElement('div');
-            
             renderMarkdownAndMath(contentText, textDiv, () => {
-                if (scrollToTop) {
-                    msgDiv.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                } else {
-                    chatContainer.scrollTop = chatContainer.scrollHeight;
-                }
+                chatContainer.scrollTop = chatContainer.scrollHeight;
             });
             
             contentDiv.appendChild(textDiv);
             msgDiv.appendChild(avatar);
             msgDiv.appendChild(contentDiv);
             chatContainer.appendChild(msgDiv);
-            
-            if (!scrollToTop) {
-                chatContainer.scrollTop = chatContainer.scrollHeight;
-            }
+            chatContainer.scrollTop = chatContainer.scrollHeight;
 
             return msgDiv;
         }
@@ -763,12 +752,11 @@
         }
 
         // ----------------------------------------------------
-        // ストリーミング通信対応のGemini API呼び出し
+        // 修正版：ストリーミング通信処理
         // ----------------------------------------------------
         async function callGeminiAPIStream(onChunk) {
             const apiKey = apiKeyInput.value.trim();
             const model = modelSelect.value;
-            // SSE (Server-Sent Events) を受け取るための streamGenerateContent エンドポイント
             const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:streamGenerateContent?alt=sse&key=${apiKey}`;
 
             const payload = {
@@ -777,9 +765,8 @@
                 generationConfig: { temperature: 0.2 }
             };
 
-            // 300秒(5分)タイムアウト制御用の AbortController
             const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 300000);
+            const timeoutId = setTimeout(() => controller.abort(), 300000); // 300秒
 
             let fullText = "";
 
@@ -799,51 +786,49 @@
                     } catch (e) {}
 
                     if (response.status === 429) {
-                        errorMsg = "APIの利用制限に達しました。左側のメニューから「Geminiのモデル名」を下のものに変更するか、少し時間を置いてから再度お試しください。";
+                        errorMsg = "APIの利用制限に達しました。モデルを変更するか、時間を置いてお試しください。";
                     } else if (response.status === 400 && errorMsg.includes("API key not valid")) {
-                        errorMsg = "無効なAPIキーです。 取得したキーが正しく貼り付けられているか確認してください。";
+                        errorMsg = "無効なAPIキーです。正しいキーを入力してください。";
                     }
                     throw new Error(errorMsg);
                 }
 
-                const reader = response.body.pipeThrough(new TextDecoderStream()).getReader();
+                const reader = response.body.getReader();
+                const decoder = new TextDecoder("utf-8");
                 let buffer = "";
 
                 while (true) {
                     const { value, done } = await reader.read();
                     if (done) break;
 
-                    buffer += value;
-                    const lines = buffer.split('\n');
-                    buffer = lines.pop(); // 未完了の行をバッファに残す
+                    buffer += decoder.decode(value, { stream: true });
+                    const lines = buffer.split("\n");
+                    buffer = lines.pop(); // 未完の行は次回に持ち越し
 
                     for (const line of lines) {
-                        const cleanedLine = line.trim();
-                        if (!cleanedLine || !cleanedLine.startsWith('data:')) continue;
-
-                        const jsonStr = cleanedLine.replace(/^data:\s*/, '');
-                        try {
-                            const parsed = JSON.parse(jsonStr);
-                            const textChunk = parsed.candidates?.[0]?.content?.parts?.[0]?.text;
-                            if (textChunk) {
-                                fullText += textChunk;
-                                onChunk(fullText);
+                        const trimmed = line.trim();
+                        if (trimmed.startsWith("data:")) {
+                            const jsonStr = trimmed.slice(5).trim();
+                            if (!jsonStr) continue;
+                            try {
+                                const parsed = JSON.parse(jsonStr);
+                                const chunkText = parsed.candidates?.[0]?.content?.parts?.[0]?.text;
+                                if (chunkText) {
+                                    fullText += chunkText;
+                                    onChunk(fullText); // リアルタイム描画呼び出し
+                                }
+                            } catch (e) {
+                                // 途切れたJSONは無視
                             }
-                        } catch (e) {
-                            // パース途中の不正なJSON行は無視
                         }
                     }
-                }
-
-                if (!fullText) {
-                    throw new Error("予期せぬレスポンス形式です。もう1度「この問題を解説させる」ボタンを押してみてください。");
                 }
 
                 return fullText;
 
             } catch (error) {
                 if (error.name === 'AbortError') {
-                    throw new Error("300秒（5分）の制限時間を超えたため、処理をタイムアウト中断しました。");
+                    throw new Error("300秒（5分）を超えたため、タイムアウト処理されました。");
                 }
                 throw error;
             } finally {
@@ -852,29 +837,53 @@
         }
 
         // ----------------------------------------------------
-        // 新しい問題を解く (フォーム送信)
+        // イベントハンドラ（新問題＆継続チャット）
         // ----------------------------------------------------
+        async function handleStreamResponse(textDiv) {
+            let lastText = "";
+            let isRendering = false;
+
+            const updateUI = async (currentText) => {
+                lastText = currentText;
+                if (isRendering) return;
+                isRendering = true;
+
+                // テキスト部分を即座に反映
+                textDiv.innerHTML = marked.parse(lastText);
+                chatContainer.scrollTop = chatContainer.scrollHeight;
+
+                // MathJaxを非同期で走らせる（数式崩れ防止）
+                if (window.MathJax && window.MathJax.typesetPromise) {
+                    try {
+                        await MathJax.typesetPromise([textDiv]);
+                    } catch(e){}
+                }
+                isRendering = false;
+            };
+
+            const responseText = await callGeminiAPIStream(updateUI);
+            
+            // 完了時の確定レンダリング
+            textDiv.innerHTML = marked.parse(responseText);
+            if (window.MathJax && window.MathJax.typesetPromise) {
+                await MathJax.typesetPromise([textDiv]);
+            }
+            return responseText;
+        }
+
         newProblemForm.addEventListener('submit', async (e) => {
             e.preventDefault();
             const apiKey = apiKeyInput.value.trim();
-            if (!apiKey) {
-                alert("APIキーを入力してください。");
-                return;
-            }
+            if (!apiKey) return alert("APIキーを入力してください。");
             
             saveApiKeyToLocal(apiKey);
 
             const textInput = problemTextInput.value.trim();
             const fileInput = problemImageInput.files[0];
 
-            if (!textInput && !fileInput) {
-                alert("問題のテキストか画像を入力してください。");
-                return;
-            }
+            if (!textInput && !fileInput) return alert("問題または画像を入力してください。");
 
-            if (window.innerWidth <= 768) {
-                closeSidebar();
-            }
+            if (window.innerWidth <= 768) closeSidebar();
 
             chatHistory = [];
             chatContainer.innerHTML = '';
@@ -885,12 +894,8 @@
             chatSendBtn.disabled = true;
 
             let initialPromptText = "以下の問題を指示通りの手順で解説してください。\n\n";
-            if (textInput) {
-                initialPromptText += `【テキスト・指示】\n${textInput}\n`;
-            }
-            if (fileInput) {
-                initialPromptText += "【画像】\n添付した画像の問題を解いてください。";
-            }
+            if (textInput) initialPromptText += `【テキスト・指示】\n${textInput}\n`;
+            if (fileInput) initialPromptText += "【画像】\n添付した画像の問題を解いてください。";
 
             let parts = [{ text: initialPromptText }];
             let displayImageUrl = null;
@@ -899,47 +904,23 @@
                 if (fileInput) {
                     const fileData = await fileToBase64(fileInput);
                     parts.push({
-                        inlineData: {
-                            data: fileData.base64,
-                            mimeType: fileData.mimeType
-                        }
+                        inlineData: { data: fileData.base64, mimeType: fileData.mimeType }
                     });
                     displayImageUrl = fileData.dataUrl;
                 }
 
                 chatHistory.push({ role: "user", parts: parts });
-                appendMessageToUI('user', initialPromptText, displayImageUrl, false);
+                appendMessageToUI('user', initialPromptText, displayImageUrl);
 
-                // UI用メッセージ枠の準備
                 const msgDiv = document.createElement('div');
                 msgDiv.className = 'message assistant';
-                msgDiv.innerHTML = `<div class="avatar">✨</div><div class="message-content"><div><div class="spinner"></div> AIが思考中...</div></div>`;
+                msgDiv.innerHTML = `<div class="avatar">✨</div><div class="message-content"><div></div></div>`;
                 chatContainer.appendChild(msgDiv);
-                chatContainer.scrollTop = chatContainer.scrollHeight;
 
                 const textDiv = msgDiv.querySelector('.message-content > div');
-
-                // 描画が重くならないよう更新をデバウンス制御
-                let renderTimer = null;
-                const updateStreamUI = (currentText) => {
-                    if (renderTimer) clearTimeout(renderTimer);
-                    renderTimer = setTimeout(() => {
-                        renderMarkdownAndMath(currentText, textDiv, () => {
-                            chatContainer.scrollTop = chatContainer.scrollHeight;
-                        });
-                    }, 100);
-                };
-
-                const responseText = await callGeminiAPIStream(updateStreamUI);
-
-                // ストリーミング完了後の最終描画
-                if (renderTimer) clearTimeout(renderTimer);
-                renderMarkdownAndMath(responseText, textDiv, () => {
-                    msgDiv.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                });
+                const responseText = await handleStreamResponse(textDiv);
 
                 chatHistory.push({ role: "model", parts: [{ text: responseText }] });
-
                 problemTextInput.value = '';
                 problemImageInput.value = '';
 
@@ -956,9 +937,6 @@
             }
         });
 
-        // ----------------------------------------------------
-        // チャット入力 (フォーム送信)
-        // ----------------------------------------------------
         chatInputForm.addEventListener('submit', async (e) => {
             e.preventDefault();
             const prompt = chatInput.value.trim();
@@ -970,34 +948,17 @@
             chatSendBtn.disabled = true;
 
             chatHistory.push({ role: "user", parts: [{ text: prompt }] });
-            appendMessageToUI('user', prompt, null, false);
+            appendMessageToUI('user', prompt);
 
             const msgDiv = document.createElement('div');
             msgDiv.className = 'message assistant';
-            msgDiv.innerHTML = `<div class="avatar">✨</div><div class="message-content"><div><div class="spinner"></div> 思考中...</div></div>`;
+            msgDiv.innerHTML = `<div class="avatar">✨</div><div class="message-content"><div></div></div>`;
             chatContainer.appendChild(msgDiv);
-            chatContainer.scrollTop = chatContainer.scrollHeight;
 
             const textDiv = msgDiv.querySelector('.message-content > div');
 
-            let renderTimer = null;
-            const updateStreamUI = (currentText) => {
-                if (renderTimer) clearTimeout(renderTimer);
-                renderTimer = setTimeout(() => {
-                    renderMarkdownAndMath(currentText, textDiv, () => {
-                        chatContainer.scrollTop = chatContainer.scrollHeight;
-                    });
-                }, 100);
-            };
-
             try {
-                const responseText = await callGeminiAPIStream(updateStreamUI);
-
-                if (renderTimer) clearTimeout(renderTimer);
-                renderMarkdownAndMath(responseText, textDiv, () => {
-                    msgDiv.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                });
-
+                const responseText = await handleStreamResponse(textDiv);
                 chatHistory.push({ role: "model", parts: [{ text: responseText }] });
             } catch (error) {
                 if (chatContainer.lastChild && chatContainer.lastChild.classList.contains("assistant")) {
