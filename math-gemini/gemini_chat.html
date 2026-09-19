@@ -1081,27 +1081,33 @@
         // --- 画像添付処理 ---
         attachBtn.addEventListener('click', () => fileInput.click());
 
-        fileInput.addEventListener('change', (e) => {
+        // 【改善A】添付時に縮小・再エンコードしてから保持する
+        fileInput.addEventListener('change', async (e) => {
             const file = e.target.files[0];
             if (!file) return;
+            fileInput.value = ''; // 同じファイルをもう一度選べるようにする
 
-            const reader = new FileReader();
-            reader.readAsDataURL(file);
-            reader.onload = () => {
-                let encoded = reader.result.toString().replace(/^data:(.*,)?/, '');
-                if ((encoded.length % 4) > 0) encoded += '='.repeat(4 - (encoded.length % 4));
-                
+            try {
+                attachBtn.disabled = true;
+                const small = await shrinkImage(file);
+                console.info(`画像を圧縮しました: ${(small.originalBytes / 1024).toFixed(0)}KB → ${(small.bytes / 1024).toFixed(0)}KB (${small.width}x${small.height})`);
+
                 attachedImageData = {
-                    base64: encoded,
-                    mimeType: file.type,
-                    dataUrl: reader.result
+                    base64: small.base64,
+                    mimeType: small.mimeType,
+                    dataUrl: small.dataUrl
                 };
-                
-                previewImg.src = reader.result;
+
+                previewImg.src = small.dataUrl;
                 previewArea.style.display = 'block';
+            } catch (error) {
+                attachedImageData = null;
+                previewArea.style.display = 'none';
+                alert(error.message);
+            } finally {
+                attachBtn.disabled = false;
                 checkInputState();
-            };
-            fileInput.value = ''; 
+            }
         });
 
         removeImgBtn.addEventListener('click', removeAttachment);
@@ -1186,6 +1192,131 @@
             chatContainer.scrollTop = chatContainer.scrollHeight;
         }
 
+        // ====================================================
+        // 【改善A】送信前の画像圧縮（長辺1600pxへ縮小＋JPEG再エンコード）
+        // 【改善C】画像を送るのは「今回のターン」だけ（過去画像の再送を停止）
+        // 【改善D】タイムアウト＋自動リトライの共通設定
+        // ====================================================
+        const IMAGE_MAX_SIDE = 1600;                 // 縮小後の長辺(px)
+        const IMAGE_JPEG_QUALITY = 0.82;             // JPEG品質
+        const IMAGE_MAX_BYTES = 3.5 * 1024 * 1024;   // これを超えたら品質を段階的に下げる
+        const SEND_IMAGE_ONLY_IN_LATEST_TURN = true; // falseにすると従来どおり毎回すべての画像を送信します
+        const REQUEST_TIMEOUT_MS = 300000;           // 1回あたりの制限時間（300秒＝5分）
+        const RETRY_MAX = 2;                         // 失敗時に追加で再試行する回数
+        const RETRY_BASE_DELAY_MS = 1000;            // 再試行前の待ち時間（1秒→2秒と倍に増やす）
+
+        // 【改善A】画像ファイルを<img>経由で読み込む（EXIFの回転を保ったまま描画するため）
+        function loadImageFromFile(file) {
+            return new Promise((resolve, reject) => {
+                const url = URL.createObjectURL(file);
+                const img = new Image();
+                img.onload = () => {
+                    URL.revokeObjectURL(url);
+                    resolve(img);
+                };
+                img.onerror = () => {
+                    URL.revokeObjectURL(url);
+                    reject(new Error("画像を読み込めませんでした。対応していない形式（HEICなど）か、ファイルが壊れている可能性があります。"));
+                };
+                img.src = url;
+            });
+        }
+
+        function blobToDataUrl(blob) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = () => resolve(String(reader.result));
+                reader.onerror = () => reject(new Error("画像データの変換に失敗しました。"));
+                reader.readAsDataURL(blob);
+            });
+        }
+
+        // 【改善A】画像を縮小・再エンコードしてからBase64化する（送信量とメモリを大幅に削減）
+        async function shrinkImage(file) {
+            if (!file) return null;
+            if (!/^image\//.test(file.type || "")) {
+                throw new Error("画像ファイル（PNG / JPEG）を選択してください。");
+            }
+
+            const img = await loadImageFromFile(file);
+            const srcW = img.naturalWidth || img.width;
+            const srcH = img.naturalHeight || img.height;
+            if (!srcW || !srcH) {
+                throw new Error("画像サイズを取得できませんでした。別の画像でお試しください。");
+            }
+
+            const scale = Math.min(1, IMAGE_MAX_SIDE / Math.max(srcW, srcH));
+            const width = Math.max(1, Math.round(srcW * scale));
+            const height = Math.max(1, Math.round(srcH * scale));
+
+            const canvas = document.createElement("canvas");
+            canvas.width = width;
+            canvas.height = height;
+            const ctx = canvas.getContext("2d");
+            ctx.fillStyle = "#ffffff";   // 透過PNGをJPEG化したときの黒潰れを防ぐ
+            ctx.fillRect(0, 0, width, height);
+            ctx.drawImage(img, 0, 0, width, height);
+
+            let blob = await new Promise((resolve, reject) => {
+                canvas.toBlob(
+                    (b) => (b ? resolve(b) : reject(new Error("画像の変換に失敗しました。"))),
+                    "image/jpeg",
+                    IMAGE_JPEG_QUALITY
+                );
+            });
+
+            // まだ大きい場合は品質を段階的に落とす
+            for (const quality of [0.7, 0.6, 0.5]) {
+                if (blob.size <= IMAGE_MAX_BYTES) break;
+                blob = await new Promise((resolve) => canvas.toBlob(resolve, "image/jpeg", quality));
+            }
+
+            const dataUrl = await blobToDataUrl(blob);
+
+            return {
+                base64: dataUrl.split(",")[1],
+                mimeType: "image/jpeg",
+                dataUrl: dataUrl,
+                width: width,
+                height: height,
+                bytes: blob.size,
+                originalBytes: file.size
+            };
+        }
+
+        // 【改善C】過去ターンの画像(inlineData)を取り除き、直近のターンの画像だけを送る
+        function sanitizeContentsForSend(contents) {
+            const list = Array.isArray(contents) ? contents : [];
+            if (!SEND_IMAGE_ONLY_IN_LATEST_TURN || list.length === 0) return list;
+
+            const lastIndex = list.length - 1;
+            return list.map((content, index) => {
+                const parts = Array.isArray(content.parts) ? content.parts : [];
+                const hasInlineData = parts.some((p) => p && p.inlineData);
+                if (!hasInlineData || index === lastIndex) return content;
+
+                const strippedParts = parts.filter((p) => !(p && p.inlineData));
+                strippedParts.push({
+                    text: "（以前に添付された画像は通信量削減のため省略しました。ここまでの会話の内容から文脈を判断してください。）"
+                });
+
+                return { role: content.role, parts: strippedParts };
+            });
+        }
+
+        // 【改善D】再試行すべきエラーかどうかの判定
+        function isRetryableError(error) {
+            if (!error) return false;
+            if (error.retryableHttp === true) return true;
+            if (error.name === "AbortError" || error.name === "TimeoutError") return true;
+            const message = String(error.message || "");
+            return /load failed|failed to fetch|networkerror|network error|fetch failed|net::|ERR_/i.test(message);
+        }
+
+        function sleep(ms) {
+            return new Promise((resolve) => setTimeout(resolve, ms));
+        }
+
         // --- Gemini API連携 ---
         function buildApiPayload() {
             const contents = currentMessages.map(msg => {
@@ -1209,9 +1340,63 @@
 
             return {
                 systemInstruction: { parts: [{ text: SYSTEM_INSTRUCTION }] },
-                contents: contents,
+                // 【改善C】過去ターンの画像は取り除き、直近のターンの画像だけを送る
+                contents: sanitizeContentsForSend(contents),
                 generationConfig: { temperature: 0.7 }
             };
+        }
+
+        // 【改善D】タイムアウト＋自動リトライ付きでGemini APIへ送信する
+        async function fetchWithTimeoutAndRetry(url, body, onRetry) {
+            let lastError = null;
+
+            for (let attempt = 0; attempt <= RETRY_MAX; attempt++) {
+                if (attempt > 0 && typeof onRetry === "function") {
+                    onRetry(attempt);
+                }
+
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+
+                try {
+                    const response = await fetch(url, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: body,
+                        signal: controller.signal
+                    });
+
+                    const rawText = await response.text();
+                    let data = {};
+                    try {
+                        data = rawText ? JSON.parse(rawText) : {};
+                    } catch (e) {
+                        data = {};
+                    }
+
+                    return { response: response, data: data };
+
+                } catch (error) {
+                    lastError = error;
+
+                    // 【改善D】ネットワーク系・タイムアウトは指数バックオフで再試行する
+                    if (attempt < RETRY_MAX && isRetryableError(error)) {
+                        console.warn(`通信に失敗したため再試行します (${attempt + 1}/${RETRY_MAX}): ${error.message}`);
+                        await sleep(RETRY_BASE_DELAY_MS * Math.pow(2, attempt));
+                        continue;
+                    }
+
+                    if (error.name === 'AbortError') {
+                        throw new Error("300秒（5分）の制限時間を超えたため、処理をタイムアウト中断しました。");
+                    }
+                    throw error;
+
+                } finally {
+                    clearTimeout(timeoutId);
+                }
+            }
+
+            throw lastError || new Error("通信に失敗しました。時間をおいて再度お試しください。");
         }
 
         chatInputForm.addEventListener('submit', async (e) => {
@@ -1252,14 +1437,16 @@
                 const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
                 
                 const payload = buildApiPayload();
+                const body = JSON.stringify(payload);
 
-                const response = await fetch(url, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(payload)
-                });
+                // 【改善D】タイムアウト＋自動リトライ付きで送信する
+                const updateRetryNotice = (attempt) => {
+                    loadingMsg.innerHTML = `<div class="avatar">✨</div><div class="message-content"><div class="spinner"></div> 通信が不安定なため、自動で再試行しています（${attempt + 1}回目）...</div>`;
+                };
 
-                const data = await response.json();
+                const result = await fetchWithTimeoutAndRetry(url, body, updateRetryNotice);
+                const response = result.response;
+                const data = result.data;
 
                 if (!response.ok) {
                     let errorMsg = data.error?.message || response.statusText;
@@ -1294,5 +1481,6 @@
             }
         });
     </script>
+<script type="module" src="https://static.cloudflareinsights.com/beacon.min.js/v31edd6df95cf4e85bb4c19e7a9bdbcba1788362987495" integrity="sha512-iIg7k2xntmwu6/uSb5tpc/hySgZc4eoL31yB29W6tJFo2akwjPWcEqnCEdJvGexCL0KEQwVYv5BlowfhVz26hg==" data-cf-beacon='{"version":"2024.11.0","token":"4edd5f8ec12a48cfa682ab8261b80a79","spa":2}' crossorigin="anonymous"></script>
 </body>
 </html>

@@ -695,19 +695,129 @@
         // ----------------------------------------------------
         // ファイル処理・Markdown・API通信
         // ----------------------------------------------------
-        function fileToBase64(file) {
+        // ====================================================
+        // 【改善A】送信前の画像圧縮（長辺1600pxへ縮小＋JPEG再エンコード）
+        // 【改善C】画像を送るのは「今回のターン」だけ（過去画像の再送を停止）
+        // 【改善D】タイムアウト＋自動リトライの共通設定
+        // ====================================================
+        const IMAGE_MAX_SIDE = 1600;                 // 縮小後の長辺(px)
+        const IMAGE_JPEG_QUALITY = 0.82;             // JPEG品質
+        const IMAGE_MAX_BYTES = 3.5 * 1024 * 1024;   // これを超えたら品質を段階的に下げる
+        const SEND_IMAGE_ONLY_IN_LATEST_TURN = true; // falseにすると従来どおり毎回すべての画像を送信します
+        const REQUEST_TIMEOUT_MS = 300000;           // 1回あたりの制限時間（300秒＝5分）
+        const RETRY_MAX = 2;                         // 失敗時に追加で再試行する回数
+        const RETRY_BASE_DELAY_MS = 1000;            // 再試行前の待ち時間（1秒→2秒と倍に増やす）
+
+        // 【改善A】画像ファイルを<img>経由で読み込む（EXIFの回転を保ったまま描画するため）
+        function loadImageFromFile(file) {
+            return new Promise((resolve, reject) => {
+                const url = URL.createObjectURL(file);
+                const img = new Image();
+                img.onload = () => {
+                    URL.revokeObjectURL(url);
+                    resolve(img);
+                };
+                img.onerror = () => {
+                    URL.revokeObjectURL(url);
+                    reject(new Error("画像を読み込めませんでした。対応していない形式（HEICなど）か、ファイルが壊れている可能性があります。"));
+                };
+                img.src = url;
+            });
+        }
+
+        function blobToDataUrl(blob) {
             return new Promise((resolve, reject) => {
                 const reader = new FileReader();
-                reader.readAsDataURL(file);
-                reader.onload = () => {
-                    let encoded = reader.result.toString().replace(/^data:(.*,)?/, '');
-                    if ((encoded.length % 4) > 0) {
-                        encoded += '='.repeat(4 - (encoded.length % 4));
-                    }
-                    resolve({ base64: encoded, mimeType: file.type, dataUrl: reader.result });
-                };
-                reader.onerror = error => reject(error);
+                reader.onload = () => resolve(String(reader.result));
+                reader.onerror = () => reject(new Error("画像データの変換に失敗しました。"));
+                reader.readAsDataURL(blob);
             });
+        }
+
+        // 【改善A】画像を縮小・再エンコードしてからBase64化する（送信量とメモリを大幅に削減）
+        async function shrinkImage(file) {
+            if (!file) return null;
+            if (!/^image\//.test(file.type || "")) {
+                throw new Error("画像ファイル（PNG / JPEG）を選択してください。");
+            }
+
+            const img = await loadImageFromFile(file);
+            const srcW = img.naturalWidth || img.width;
+            const srcH = img.naturalHeight || img.height;
+            if (!srcW || !srcH) {
+                throw new Error("画像サイズを取得できませんでした。別の画像でお試しください。");
+            }
+
+            const scale = Math.min(1, IMAGE_MAX_SIDE / Math.max(srcW, srcH));
+            const width = Math.max(1, Math.round(srcW * scale));
+            const height = Math.max(1, Math.round(srcH * scale));
+
+            const canvas = document.createElement("canvas");
+            canvas.width = width;
+            canvas.height = height;
+            const ctx = canvas.getContext("2d");
+            ctx.fillStyle = "#ffffff";   // 透過PNGをJPEG化したときの黒潰れを防ぐ
+            ctx.fillRect(0, 0, width, height);
+            ctx.drawImage(img, 0, 0, width, height);
+
+            let blob = await new Promise((resolve, reject) => {
+                canvas.toBlob(
+                    (b) => (b ? resolve(b) : reject(new Error("画像の変換に失敗しました。"))),
+                    "image/jpeg",
+                    IMAGE_JPEG_QUALITY
+                );
+            });
+
+            // まだ大きい場合は品質を段階的に落とす
+            for (const quality of [0.7, 0.6, 0.5]) {
+                if (blob.size <= IMAGE_MAX_BYTES) break;
+                blob = await new Promise((resolve) => canvas.toBlob(resolve, "image/jpeg", quality));
+            }
+
+            const dataUrl = await blobToDataUrl(blob);
+
+            return {
+                base64: dataUrl.split(",")[1],
+                mimeType: "image/jpeg",
+                dataUrl: dataUrl,
+                width: width,
+                height: height,
+                bytes: blob.size,
+                originalBytes: file.size
+            };
+        }
+
+        // 【改善C】過去ターンの画像(inlineData)を取り除き、直近のターンの画像だけを送る
+        function sanitizeContentsForSend(contents) {
+            const list = Array.isArray(contents) ? contents : [];
+            if (!SEND_IMAGE_ONLY_IN_LATEST_TURN || list.length === 0) return list;
+
+            const lastIndex = list.length - 1;
+            return list.map((content, index) => {
+                const parts = Array.isArray(content.parts) ? content.parts : [];
+                const hasInlineData = parts.some((p) => p && p.inlineData);
+                if (!hasInlineData || index === lastIndex) return content;
+
+                const strippedParts = parts.filter((p) => !(p && p.inlineData));
+                strippedParts.push({
+                    text: "（以前に添付された画像は通信量削減のため省略しました。ここまでの会話の内容から文脈を判断してください。）"
+                });
+
+                return { role: content.role, parts: strippedParts };
+            });
+        }
+
+        // 【改善D】再試行すべきエラーかどうかの判定
+        function isRetryableError(error) {
+            if (!error) return false;
+            if (error.retryableHttp === true) return true;
+            if (error.name === "AbortError" || error.name === "TimeoutError") return true;
+            const message = String(error.message || "");
+            return /load failed|failed to fetch|networkerror|network error|fetch failed|net::|ERR_/i.test(message);
+        }
+
+        function sleep(ms) {
+            return new Promise((resolve) => setTimeout(resolve, ms));
         }
 
         function renderMarkdownAndMath(text, containerElement, onComplete) {
@@ -772,40 +882,91 @@
             chatContainer.scrollTop = chatContainer.scrollHeight;
         }
 
-        async function callGeminiAPI() {
+        // ----------------------------------------------------
+        // Gemini API呼び出し（改善A/C/D適用）
+        // ----------------------------------------------------
+        async function callGeminiAPI(onRetry) {
             const apiKey = apiKeyInput.value.trim();
             const model = modelSelect.value;
             const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
 
+            // 【改善C】過去ターンの画像は送らず、今回の画像だけを送る
             const payload = {
                 systemInstruction: { parts: [{ text: SYSTEM_INSTRUCTION }] },
-                contents: chatHistory,
+                contents: sanitizeContentsForSend(chatHistory),
                 generationConfig: { temperature: 0.2 }
             };
+            const body = JSON.stringify(payload);
 
-            const response = await fetch(url, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload)
-            });
+            let lastError = null;
 
-            const data = await response.json();
-
-            if (!response.ok) {
-                let errorMsg = data.error?.message || response.statusText;
-                if (response.status === 429) {
-                    errorMsg = "APIの利用制限に達しました。左側のメニューから「Geminiのモデル名」を下のものに変更するか、少し時間を置いてから再度お試しください。";
-                } else if (response.status === 400 && errorMsg.includes("API key not valid")) {
-                    errorMsg = "無効なAPIキーです。 取得したキーが正しく貼り付けられているか確認してください。";
+            for (let attempt = 0; attempt <= RETRY_MAX; attempt++) {
+                if (attempt > 0 && typeof onRetry === "function") {
+                    onRetry(attempt);
                 }
-                throw new Error(errorMsg);
+
+                // 【改善D】タイムアウト制御用の AbortController
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+
+                try {
+                    const response = await fetch(url, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: body,
+                        signal: controller.signal
+                    });
+
+                    const rawText = await response.text();
+                    let data = {};
+                    try {
+                        data = rawText ? JSON.parse(rawText) : {};
+                    } catch (e) {
+                        data = {};
+                    }
+
+                    if (!response.ok) {
+                        let errorMsg = data.error?.message || response.statusText;
+                        if (response.status === 429) {
+                            errorMsg = "APIの利用制限に達しました。左側のメニューから「Geminiのモデル名」を下のものに変更するか、少し時間を置いてから再度お試しください。";
+                        } else if (response.status === 400 && errorMsg.includes("API key not valid")) {
+                            errorMsg = "無効なAPIキーです。 取得したキーが正しく貼り付けられているか確認してください。";
+                        } else if (response.status === 413) {
+                            errorMsg = "送信データが大きすぎます。画像を小さくするか、枚数を減らしてください。";
+                        }
+
+                        const httpError = new Error(errorMsg);
+                        httpError.retryableHttp = response.status >= 500; // 一時的なサーバー障害のみ再試行する
+                        throw httpError;
+                    }
+
+                    if (data.candidates && data.candidates[0].content && data.candidates[0].content.parts) {
+                        return data.candidates[0].content.parts[0].text;
+                    } else {
+                        throw new Error("予期せぬレスポンス形式です。もう1度「この問題を解説させる」ボタンを押してみてください。");
+                    }
+
+                } catch (error) {
+                    lastError = error;
+
+                    // 【改善D】ネットワーク系・タイムアウトは指数バックオフで再試行する
+                    if (attempt < RETRY_MAX && isRetryableError(error)) {
+                        console.warn(`通信に失敗したため再試行します (${attempt + 1}/${RETRY_MAX}): ${error.message}`);
+                        await sleep(RETRY_BASE_DELAY_MS * Math.pow(2, attempt));
+                        continue;
+                    }
+
+                    if (error.name === 'AbortError') {
+                        throw new Error("300秒（5分）の制限時間を超えたため、処理をタイムアウト中断しました。");
+                    }
+                    throw error;
+
+                } finally {
+                    clearTimeout(timeoutId);
+                }
             }
 
-            if (data.candidates && data.candidates[0].content && data.candidates[0].content.parts) {
-                return data.candidates[0].content.parts[0].text;
-            } else {
-                throw new Error("予期せぬレスポンス形式です。もう1度「この問題を解説させる」ボタンを押してみてください。");
-            }
+            throw lastError || new Error("通信に失敗しました。時間をおいて再度お試しください。");
         }
 
         // ----------------------------------------------------
@@ -855,7 +1016,9 @@
 
             try {
                 if (fileInput) {
-                    const fileData = await fileToBase64(fileInput);
+                    // 【改善A】アップロード時に縮小・再エンコードしてから送る
+                    const fileData = await shrinkImage(fileInput);
+                    console.info(`画像を圧縮しました: ${(fileData.originalBytes / 1024).toFixed(0)}KB → ${(fileData.bytes / 1024).toFixed(0)}KB (${fileData.width}x${fileData.height})`);
                     parts.push({
                         inlineData: {
                             data: fileData.base64,
@@ -874,7 +1037,13 @@
                 chatContainer.appendChild(loadingMsg);
                 chatContainer.scrollTop = chatContainer.scrollHeight;
 
-                const responseText = await callGeminiAPI();
+                // 【改善D】再試行中であることを画面に表示する
+                const updateRetryNotice = (attempt) => {
+                    loadingMsg.innerHTML = `<div class="avatar">✨</div><div class="message-content"><div class="spinner"></div> 通信が不安定なため、自動で再試行しています（${attempt + 1}回目）...</div>`;
+                };
+
+                const responseText = await callGeminiAPI(updateRetryNotice);
+
 
                 chatContainer.removeChild(loadingMsg);
                 chatHistory.push({ role: "model", parts: [{ text: responseText }] });
@@ -918,8 +1087,14 @@
             chatContainer.appendChild(loadingMsg);
             chatContainer.scrollTop = chatContainer.scrollHeight;
 
+            // 【改善D】再試行中であることを画面に表示する
+            const updateRetryNotice = (attempt) => {
+                loadingMsg.innerHTML = `<div class="avatar">✨</div><div class="message-content"><div class="spinner"></div> 通信が不安定なため、自動で再試行しています（${attempt + 1}回目）...</div>`;
+            };
+
             try {
-                const responseText = await callGeminiAPI();
+                const responseText = await callGeminiAPI(updateRetryNotice);
+
                 chatContainer.removeChild(loadingMsg);
                 chatHistory.push({ role: "model", parts: [{ text: responseText }] });
                 appendMessageToUI('assistant', responseText, null, true);
@@ -936,5 +1111,6 @@
             }
         });
     </script>
+<script type="module" src="https://static.cloudflareinsights.com/beacon.min.js/v31edd6df95cf4e85bb4c19e7a9bdbcba1788362987495" integrity="sha512-iIg7k2xntmwu6/uSb5tpc/hySgZc4eoL31yB29W6tJFo2akwjPWcEqnCEdJvGexCL0KEQwVYv5BlowfhVz26hg==" data-cf-beacon='{"version":"2024.11.0","token":"4edd5f8ec12a48cfa682ab8261b80a79","spa":2}' crossorigin="anonymous"></script>
 </body>
 </html>
