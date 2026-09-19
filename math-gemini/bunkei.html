@@ -882,82 +882,251 @@
             chatContainer.scrollTop = chatContainer.scrollHeight;
         }
 
-        // ----------------------------------------------------
-        // Gemini API呼び出し（改善A/C/D適用）
-        // ----------------------------------------------------
-        async function callGeminiAPI(onRetry) {
-            const apiKey = apiKeyInput.value.trim();
-            const model = modelSelect.value;
-            const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+        // ====================================================
+        // 【改善E】Geminiのストリーミング(SSE)受信エンジン
+        // streamGenerateContent?alt=sse の ""data: {...}"" 行を逐次読み取り、
+        // 受け取った分だけ本文を組み立ててコールバックします。
+        // ====================================================
 
-            // 【改善C】過去ターンの画像は送らず、今回の画像だけを送る
-            const payload = {
-                systemInstruction: { parts: [{ text: SYSTEM_INSTRUCTION }] },
-                contents: sanitizeContentsForSend(chatHistory),
-                generationConfig: { temperature: 0.2 }
-            };
-            const body = JSON.stringify(payload);
+        // 受信中の本文描画（Markdownのみ。数式は完了時にまとめて描画して負荷を抑える）
+        function streamRenderText(element, text) {
+            if (!element) return;
+            if (window.marked && typeof marked.parse === "function") {
+                element.innerHTML = marked.parse(text);
+            } else {
+                element.textContent = text;
+            }
+        }
 
-            let lastError = null;
+        // 完了時の数式描画（MathJaxが無い環境でもエラーにしない）
+        function streamFinalizeMath(element) {
+            if (!element || !window.MathJax || typeof MathJax.typesetPromise !== "function") {
+                return Promise.resolve();
+            }
+            return MathJax.typesetPromise([element]).catch((err) => {
+                console.warn("数式の描画に失敗しました:", err);
+            });
+        }
 
-            for (let attempt = 0; attempt <= RETRY_MAX; attempt++) {
-                if (attempt > 0 && typeof onRetry === "function") {
-                    onRetry(attempt);
+        // 1つのSSEイベント(JSON)から差分テキストを取り出す
+        function extractDeltaText(json) {
+            if (!json || typeof json !== "object") return "";
+
+            // Interactions API（新しい形式: step.delta + delta.text）
+            if (json.event_type === "step.delta" && json.delta &&
+                json.delta.type === "text" && typeof json.delta.text === "string") {
+                return json.delta.text;
+            }
+
+            // generateContent / streamGenerateContent（従来形式）
+            const candidates = json.candidates;
+            if (Array.isArray(candidates) && candidates.length > 0) {
+                const content = candidates[0] && candidates[0].content;
+                const parts = content && content.parts;
+                if (Array.isArray(parts)) {
+                    let text = "";
+                    for (const part of parts) {
+                        if (part && typeof part.text === "string") text += part.text;
+                    }
+                    return text;
+                }
+            }
+            return "";
+        }
+
+        // 安全フィルタ等で途中終了していないかの確認
+        function extractBlockedReason(json) {
+            const candidates = json && json.candidates;
+            if (Array.isArray(candidates) && candidates.length > 0) {
+                const candidate = candidates[0];
+                const reason = candidate && candidate.finishReason;
+                if (reason && reason !== "STOP" && reason !== "MAX_TOKENS") return reason;
+            }
+            return null;
+        }
+
+        // レスポンス本文を読み切って、差分ごとに onDelta を呼ぶ
+        async function readSseBody(response, onDelta, onAnyData) {
+            let sawSse = false;
+            let doneReading = false;
+            let buffer = "";
+            let rawAll = "";
+
+            const handleLine = (line) => {
+                const cleaned = line.replace(/\r$/, "").trim();
+                if (!cleaned) return;
+
+                // "event: ..." などの行は無視し、data: 行だけを対象にする
+                if (!cleaned.startsWith("data:")) return;
+
+                sawSse = true;
+                const payload = cleaned.slice(5).trim();
+                if (!payload) return;
+
+                // ストリーム終端マーカー
+                if (payload === "[DONE]") {
+                    doneReading = true;
+                    return;
                 }
 
-                // 【改善D】タイムアウト制御用の AbortController
+                let json = null;
+                try {
+                    json = JSON.parse(payload);
+                } catch (e) {
+                    return; // 途中で切れた行は捨てる
+                }
+
+                if (json && json.error) {
+                    throw new Error(json.error.message || "ストリーミング中にAPIエラーが発生しました。");
+                }
+
+                if (typeof onAnyData === "function") onAnyData();
+
+                const delta = extractDeltaText(json);
+                if (delta) onDelta(delta);
+
+                const blocked = extractBlockedReason(json);
+                if (blocked) {
+                    throw new Error(`回答が途中で終了しました（理由: ${blocked}）。問題文を変えるか、もう一度お試しください。`);
+                }
+            };
+
+            // ReadableStream + TextDecoder（UTF-8のマルチバイトがチャンク境界で切れても壊れない）
+            if (response.body && typeof response.body.getReader === "function" && typeof TextDecoder === "function") {
+                const reader = response.body.getReader();
+                const decoder = new TextDecoder("utf-8");
+                try {
+                    while (!doneReading) {
+                        const { value, done } = await reader.read();
+                        if (done) break;
+
+                        const chunk = decoder.decode(value, { stream: true });
+                        rawAll += chunk;
+                        buffer += chunk;
+
+                        const lines = buffer.split("\n");
+                        buffer = lines.pop(); // 未完了の行は次のチャンクへ持ち越す
+                        for (const line of lines) handleLine(line);
+                    }
+
+                    // 端数（最後の改行なしの行）とデコーダの残りを処理する
+                    if (!doneReading) {
+                        const tail = decoder.decode();
+                        if (tail) { rawAll += tail; buffer += tail; }
+                        if (buffer.trim()) handleLine(buffer);
+                    }
+                } finally {
+                    try { reader.releaseLock(); } catch (e) {}
+                }
+            } else {
+                // ReadableStream非対応のブラウザ：まとめて受信してから解析する
+                rawAll = await response.text();
+                for (const line of rawAll.split("\n")) handleLine(line);
+            }
+
+            // data: 行が1つも無かった場合は、通常のJSON（またはJSON配列）として再解釈する
+            if (!sawSse && rawAll.trim()) {
+                let json = null;
+                try {
+                    json = JSON.parse(rawAll);
+                } catch (e) {
+                    json = null;
+                }
+                if (json) {
+                    const items = Array.isArray(json) ? json : [json];
+                    for (const item of items) {
+                        const delta = extractDeltaText(item);
+                        if (delta) {
+                            if (typeof onAnyData === "function") onAnyData();
+                            onDelta(delta);
+                        }
+                    }
+                }
+            }
+
+            return rawAll;
+        }
+
+        // タイムアウト＋自動リトライ付きでストリーミング受信する
+        async function streamGeminiRequest(url, body, onDelta, onRetry) {
+            let lastError = null;
+            let receivedText = "";
+
+            for (let attempt = 0; attempt <= RETRY_MAX; attempt++) {
+                if (attempt > 0 && typeof onRetry === "function") onRetry(attempt);
+
                 const controller = new AbortController();
                 const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+                let receivedAnyData = false;
 
                 try {
                     const response = await fetch(url, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
+                        method: "POST",
+                        headers: {
+                            "Content-Type": "application/json",
+                            "Accept": "text/event-stream"
+                        },
                         body: body,
                         signal: controller.signal
                     });
 
-                    const rawText = await response.text();
-                    let data = {};
-                    try {
-                        data = rawText ? JSON.parse(rawText) : {};
-                    } catch (e) {
-                        data = {};
-                    }
-
                     if (!response.ok) {
-                        let errorMsg = data.error?.message || response.statusText;
+                        const rawErrorText = await response.text().catch(() => "");
+                        let errorMsg = response.statusText;
+                        try {
+                            const parsed = rawErrorText ? JSON.parse(rawErrorText) : null;
+                            errorMsg = (parsed && parsed.error && parsed.error.message) || errorMsg;
+                        } catch (e) {}
+
                         if (response.status === 429) {
                             errorMsg = "APIの利用制限に達しました。左側のメニューから「Geminiのモデル名」を下のものに変更するか、少し時間を置いてから再度お試しください。";
-                        } else if (response.status === 400 && errorMsg.includes("API key not valid")) {
-                            errorMsg = "無効なAPIキーです。 取得したキーが正しく貼り付けられているか確認してください。";
+                        } else if (response.status === 400 && /API key not valid/i.test(errorMsg)) {
+                            errorMsg = "無効なAPIキーです。取得したキーが正しく貼り付けられているか確認してください。";
                         } else if (response.status === 413) {
                             errorMsg = "送信データが大きすぎます。画像を小さくするか、枚数を減らしてください。";
+                        } else if (response.status === 404) {
+                            errorMsg = "選択中のモデルが見つかりません。左側のメニューから別のモデルを選んでください。(" + errorMsg + ")";
                         }
 
                         const httpError = new Error(errorMsg);
-                        httpError.retryableHttp = response.status >= 500; // 一時的なサーバー障害のみ再試行する
+                        // 一時的なエラー(429/408/5xx)のみ再試行する
+                        httpError.retryableHttp = (response.status === 429 || response.status === 408 || response.status >= 500);
                         throw httpError;
                     }
 
-                    if (data.candidates && data.candidates[0].content && data.candidates[0].content.parts) {
-                        return data.candidates[0].content.parts[0].text;
-                    } else {
+                    await readSseBody(
+                        response,
+                        (delta) => {
+                            receivedText += delta;
+                            onDelta(receivedText);
+                        },
+                        () => { receivedAnyData = true; }
+                    );
+
+                    if (!receivedText.trim()) {
                         throw new Error("予期せぬレスポンス形式です。もう1度「この問題を解説させる」ボタンを押してみてください。");
                     }
+                    return receivedText;
 
                 } catch (error) {
                     lastError = error;
 
-                    // 【改善D】ネットワーク系・タイムアウトは指数バックオフで再試行する
+                    // すでに本文を受信し始めていた場合は、重複を避けるため再試行しない
+                    if (receivedAnyData) {
+                        if (error.name === "AbortError") {
+                            throw new Error("受信中に" + Math.round(REQUEST_TIMEOUT_MS / 1000) + "秒を超えたため、処理をタイムアウト中断しました。");
+                        }
+                        throw error;
+                    }
+
                     if (attempt < RETRY_MAX && isRetryableError(error)) {
                         console.warn(`通信に失敗したため再試行します (${attempt + 1}/${RETRY_MAX}): ${error.message}`);
                         await sleep(RETRY_BASE_DELAY_MS * Math.pow(2, attempt));
                         continue;
                     }
 
-                    if (error.name === 'AbortError') {
-                        throw new Error("300秒（5分）の制限時間を超えたため、処理をタイムアウト中断しました。");
+                    if (error.name === "AbortError") {
+                        throw new Error(Math.round(REQUEST_TIMEOUT_MS / 1000) + "秒の制限時間を超えたため、処理をタイムアウト中断しました。");
                     }
                     throw error;
 
@@ -967,6 +1136,26 @@
             }
 
             throw lastError || new Error("通信に失敗しました。時間をおいて再度お試しください。");
+        }
+
+        // ----------------------------------------------------
+        // Gemini API呼び出し（ストリーミング／改善A・C・D・E適用）
+        // ----------------------------------------------------
+        async function callGeminiAPI(onChunk, onRetry) {
+            const apiKey = apiKeyInput.value.trim();
+            const model = modelSelect.value;
+            // SSE (Server-Sent Events) を受け取るための streamGenerateContent エンドポイント
+            const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:streamGenerateContent?alt=sse&key=${apiKey}`;
+
+            // 【改善C】過去ターンの画像は送らず、今回の画像だけを送る
+            const payload = {
+                systemInstruction: { parts: [{ text: SYSTEM_INSTRUCTION }] },
+                contents: sanitizeContentsForSend(chatHistory),
+                generationConfig: { temperature: 0.2 }
+            };
+
+            // 【改善E】SSEを受信しながら逐次 onChunk(受け取り済み全文) を呼ぶ
+            return await streamGeminiRequest(url, JSON.stringify(payload), onChunk, onRetry);
         }
 
         // ----------------------------------------------------
@@ -1042,7 +1231,23 @@
                     loadingMsg.innerHTML = `<div class="avatar">✨</div><div class="message-content"><div class="spinner"></div> 通信が不安定なため、自動で再試行しています（${attempt + 1}回目）...</div>`;
                 };
 
-                const responseText = await callGeminiAPI(updateRetryNotice);
+                // 【改善E】受信しながら本文を描画するライブ表示
+                const liveMsgDiv = document.createElement('div');
+                liveMsgDiv.className = 'message assistant';
+                liveMsgDiv.innerHTML = `<div class="avatar">✨</div><div class="message-content"><div class="spinner"></div> 生成中...</div>`;
+                chatContainer.appendChild(liveMsgDiv);
+                chatContainer.scrollTop = chatContainer.scrollHeight;
+
+                const updateStreamUI = (currentText) => {
+                    streamRenderText(liveMsgDiv.querySelector('.message-content'), currentText);
+                    chatContainer.scrollTop = chatContainer.scrollHeight;
+                };
+
+                const responseText = await callGeminiAPI(updateStreamUI, updateRetryNotice);
+
+                chatContainer.removeChild(loadingMsg);
+                chatContainer.removeChild(liveMsgDiv);
+                const finalMsgDiv = appendMessageToUI('assistant', responseText, null, true);
 
 
                 chatContainer.removeChild(loadingMsg);
@@ -1053,9 +1258,8 @@
                 problemImageInput.value = '';
 
             } catch (error) {
-                if (chatContainer.lastChild && chatContainer.lastChild.innerHTML.includes("生成中")) {
-                    chatContainer.removeChild(chatContainer.lastChild);
-                }
+                if (liveMsgDiv.parentNode) liveMsgDiv.remove();
+                if (loadingMsg.parentNode) chatContainer.removeChild(loadingMsg);
                 showError(error.message);
                 chatHistory.pop();
             } finally {
@@ -1093,15 +1297,30 @@
             };
 
             try {
-                const responseText = await callGeminiAPI(updateRetryNotice);
+                // 【改善E】受信しながら本文を描画するライブ表示
+                const liveMsgDiv = document.createElement('div');
+                liveMsgDiv.className = 'message assistant';
+                liveMsgDiv.innerHTML = `<div class="avatar">✨</div><div class="message-content"><div class="spinner"></div> 生成中...</div>`;
+                chatContainer.appendChild(liveMsgDiv);
+                chatContainer.scrollTop = chatContainer.scrollHeight;
+
+                const updateStreamUI = (currentText) => {
+                    streamRenderText(liveMsgDiv.querySelector('.message-content'), currentText);
+                    chatContainer.scrollTop = chatContainer.scrollHeight;
+                };
+
+                const responseText = await callGeminiAPI(updateStreamUI, updateRetryNotice);
+
+                chatContainer.removeChild(loadingMsg);
+                chatContainer.removeChild(liveMsgDiv);
+                const finalMsgDiv = appendMessageToUI('assistant', responseText, null, true);
 
                 chatContainer.removeChild(loadingMsg);
                 chatHistory.push({ role: "model", parts: [{ text: responseText }] });
                 appendMessageToUI('assistant', responseText, null, true);
             } catch (error) {
-                if (chatContainer.lastChild && chatContainer.lastChild.innerHTML.includes("思考中")) {
-                    chatContainer.removeChild(chatContainer.lastChild);
-                }
+                if (liveMsgDiv.parentNode) liveMsgDiv.remove();
+                if (loadingMsg.parentNode) chatContainer.removeChild(loadingMsg);
                 showError(error.message);
                 chatHistory.pop();
             } finally {
