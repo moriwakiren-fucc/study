@@ -449,6 +449,84 @@
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
 
         /* モバイル対応 */
+        .download-area {
+            position: relative;
+            flex-shrink: 0;
+        }
+
+        .download-btn {
+            width: auto;
+            white-space: nowrap;
+            padding: 9px 14px;
+            font-size: 0.9rem;
+        }
+
+        .download-btn:disabled {
+            opacity: 0.45;
+            cursor: not-allowed;
+            border-color: var(--border-color);
+            color: #888;
+        }
+
+        .download-menu {
+            display: none;
+            position: absolute;
+            right: 0;
+            top: calc(100% + 8px);
+            z-index: 1200;
+            width: 180px;
+            padding: 8px;
+            background: #fff;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            box-shadow: 0 5px 18px rgba(0,0,0,0.15);
+        }
+
+        .download-menu.open { display: block; }
+        .download-menu button { margin: 3px 0; font-size: 0.9rem; }
+
+        .export-sheet {
+            position: fixed;
+            left: -100000px;
+            top: 0;
+            width: 794px;
+            padding: 56px;
+            background: #fff;
+            color: #111;
+            font-family: 'Segoe UI', Meiryo, system-ui, -apple-system, sans-serif;
+            line-height: 1.6;
+        }
+
+        .export-sheet h1 {
+            margin: 0 0 24px;
+            font-size: 24px;
+            border-bottom: 2px solid #333;
+            padding-bottom: 10px;
+        }
+
+        .export-question {
+            white-space: pre-wrap;
+            margin: 0 0 24px;
+            padding: 14px;
+            background: #f5f7fa;
+            border-left: 4px solid #4285f4;
+        }
+
+        .export-image {
+            display: block;
+            max-width: 100%;
+            max-height: 520px;
+            object-fit: contain;
+            margin: 0 auto 24px;
+        }
+
+        .export-answer { overflow-wrap: anywhere; }
+        /* html2canvasがMathJaxの支援用MathMLを二重の数式として拾わないようにする。 */
+        .export-sheet mjx-assistive-mml,
+        .export-sheet .MathJax_Preview {
+            display: none !important;
+        }
+
         @media (max-width: 768px) {
             .sidebar {
                 position: fixed; height: 100dvh; left: 0; top: 0;
@@ -462,6 +540,8 @@
             .avatar { width: 30px; height: 30px; font-size: 1rem; }
         }
     </style>
+    <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
 </head>
 <body>
 
@@ -531,7 +611,17 @@
     <div class="main">
         <div class="header">
             <button class="menu-btn" id="menu-btn">☰</button>
+            <div style="flex:1;">
             <h1>💬 Geminiの脳みそを借りるサイト</h1>
+            <div style="width:100%; line-height:1.5em; background-color:#ff0; font-family:sans-serif; text-align:center; font-weight:bold; font-size:0.75em;">★複数の画像をアップロードできるようになったよ★</div>
+            </div>
+            <div class="download-area" id="download-area">
+                <button type="button" id="download-answer-btn" class="download-btn" disabled>回答ダウンロード</button>
+                <div class="download-menu" id="download-menu">
+                    <button type="button" id="download-pdf-btn">PDFで保存</button>
+                    <button type="button" id="download-image-btn">画像で保存</button>
+                </div>
+            </div>
         </div>
 
         <div class="chat-container" id="chat-container">
@@ -548,18 +638,13 @@
             <form id="chat-input-form" class="chat-input-form">
                 
                 <!-- 画像プレビュー -->
-                <div class="preview-area" id="preview-area">
-                    <div class="preview-item">
-                        <img id="preview-img" src="" alt="添付画像">
-                        <button type="button" class="remove-btn" id="remove-img-btn">&times;</button>
-                    </div>
-                </div>
+                <div class="preview-area" id="preview-area" aria-label="添付画像プレビュー"></div>
 
                 <div class="input-row">
                     <!-- 隠しファイル入力 -->
-                    <input type="file" id="file-input" accept="image/png, image/jpeg, image/jpg, image/webp" style="display: none;">
+                    <input type="file" id="file-input" accept="image/png, image/jpeg, image/jpg, image/webp" multiple style="display: none;">
                     
-                    <button type="button" class="attach-btn" id="attach-btn" title="画像を添付">
+                    <button type="button" class="attach-btn" id="attach-btn" title="画像を添付（最大3枚・選択順）">
                         <svg viewBox="0 0 24 24"><path d="M16.5 6v11.5c0 2.21-1.79 4-4 4s-4-1.79-4-4V5a2.5 2.5 0 0 1 5 0v10.5c0 .55-.45 1-1 1s-1-.45-1-1V6H10v11.5a2.5 2.5 0 0 0 5 0V5c0-1.93-1.57-3.5-3.5-3.5S8 3.07 8 5v12.5c0 3.04 2.46 5.5 5.5 5.5s5.5-2.46 5.5-5.5V6h-2.5z"/></svg>
                     </button>
                     
@@ -616,18 +701,27 @@
         const chatContainer = document.getElementById('chat-container');
         const chatInput = document.getElementById('chat-input');
         const chatSendBtn = document.getElementById('chat-send-btn');
+        const downloadAnswerBtn = document.getElementById('download-answer-btn');
+        const downloadMenu = document.getElementById('download-menu');
+        const downloadPdfBtn = document.getElementById('download-pdf-btn');
+        const downloadImageBtn = document.getElementById('download-image-btn');
+        const newProblemSubmitBtn = document.querySelector('#new-problem-form button[type="submit"]');
         const chatInputForm = document.getElementById('chat-input-form');
         
         const attachBtn = document.getElementById('attach-btn');
         const fileInput = document.getElementById('file-input');
         const previewArea = document.getElementById('preview-area');
-        const previewImg = document.getElementById('preview-img');
-        const removeImgBtn = document.getElementById('remove-img-btn');
 
         // 状態管理
         let currentSessionId = null;
-        let currentMessages = []; // { role: 'user'|'model', text: '...', imageUrl: '...' }
-        let attachedImageData = null; // { base64, mimeType, dataUrl }
+        let currentMessages = []; // { role: 'user'|'model', text: '...', images: [{base64,mimeType,dataUrl}] }
+        let attachedImages = []; // 最大3枚の圧縮済み画像
+        let activeRequest = null;
+        let lastCompletedAnswer = '';
+        let lastProblemImageUrl = null;
+        let lastProblemQuestion = '';
+        let lastRenderedAnswerElement = null;
+        let exportInProgress = false;
 
         // --- サイドバー開閉 ---
         function openSidebar() { sidebar.classList.add('open'); sidebarOverlay.classList.add('open'); }
@@ -1037,6 +1131,12 @@
             const histories = loadHistories();
             const session = histories.find(h => h.id === id);
             if (session) {
+                lastCompletedAnswer = '';
+                lastProblemImageUrl = null;
+                lastProblemQuestion = '';
+                lastRenderedAnswerElement = null;
+                downloadAnswerBtn.disabled = true;
+                closeDownloadMenu();
                 currentSessionId = session.id;
                 currentMessages = session.messages;
                 
@@ -1044,7 +1144,7 @@
                 initialInfo.style.display = 'none';
                 
                 currentMessages.forEach(msg => {
-                    appendMessageToUI(msg.role, msg.text, msg.imageUrl, false);
+                    appendMessageToUI(msg.role, msg.text, Array.isArray(msg.images) ? msg.images.map(image => image.dataUrl || image) : msg.imageUrl, false);
                 });
                 renderHistoryList();
             }
@@ -1064,6 +1164,12 @@
         }
 
         function startNewChat() {
+            lastCompletedAnswer = '';
+            lastProblemImageUrl = null;
+            lastProblemQuestion = '';
+            lastRenderedAnswerElement = null;
+            downloadAnswerBtn.disabled = true;
+            closeDownloadMenu();
             currentSessionId = null;
             currentMessages = [];
             chatContainer.innerHTML = '';
@@ -1078,31 +1184,35 @@
 
         newChatBtn.addEventListener('click', startNewChat);
 
-        // --- 画像添付処理 ---
+        // --- 画像添付処理（最大3枚、圧縮後合計8MBまで） ---
         attachBtn.addEventListener('click', () => fileInput.click());
 
-        // 【改善A】添付時に縮小・再エンコードしてから保持する
         fileInput.addEventListener('change', async (e) => {
-            const file = e.target.files[0];
-            if (!file) return;
-            fileInput.value = ''; // 同じファイルをもう一度選べるようにする
-
+            const files = Array.from(e.target.files || []);
+            fileInput.value = '';
+            if (!files.length) return;
+            if (attachedImages.length + files.length > MAX_IMAGE_COUNT) {
+                alert(`画像は最大${MAX_IMAGE_COUNT}枚まで添付できます。`);
+                return;
+            }
             try {
                 attachBtn.disabled = true;
-                const small = await shrinkImage(file);
-                console.info(`画像を圧縮しました: ${(small.originalBytes / 1024).toFixed(0)}KB → ${(small.bytes / 1024).toFixed(0)}KB (${small.width}x${small.height})`);
-
-                attachedImageData = {
-                    base64: small.base64,
-                    mimeType: small.mimeType,
-                    dataUrl: small.dataUrl
-                };
-
-                previewImg.src = small.dataUrl;
-                previewArea.style.display = 'block';
+                const initialImageCount = attachedImages.length;
+                let totalBytes = attachedImages.reduce((sum, image) => sum + image.bytes, 0);
+                for (const [offset, file] of files.entries()) {
+                    const small = await shrinkImage(file);
+                    totalBytes += small.bytes;
+                    if (totalBytes > IMAGE_MAX_TOTAL_BYTES) {
+                        throw new Error(`圧縮後の画像合計が上限（${Math.round(IMAGE_MAX_TOTAL_BYTES / 1024 / 1024)}MB）を超えました。画像を減らすか、解像度を下げてください。`);
+                    }
+                    attachedImages.push({ base64: small.base64, mimeType: small.mimeType, dataUrl: small.dataUrl, bytes: small.bytes });
+                    console.info(`画像${attachedImages.length}を圧縮しました: ${Math.round(small.originalBytes / 1024)}KB → ${Math.round(small.bytes / 1024)}KB (${small.width}x${small.height})`);
+                }
+                renderAttachmentPreviews();
             } catch (error) {
-                attachedImageData = null;
-                previewArea.style.display = 'none';
+                // 今回の選択途中で追加した分を戻す。既存の添付は維持する。
+                attachedImages.splice(initialImageCount);
+                renderAttachmentPreviews();
                 alert(error.message);
             } finally {
                 attachBtn.disabled = false;
@@ -1110,12 +1220,31 @@
             }
         });
 
-        removeImgBtn.addEventListener('click', removeAttachment);
+        function renderAttachmentPreviews() {
+            previewArea.innerHTML = '';
+            attachedImages.forEach((image, index) => {
+                const item = document.createElement('div');
+                item.className = 'preview-item';
+                item.dataset.imageIndex = String(index + 1);
+                const img = document.createElement('img');
+                img.src = image.dataUrl;
+                img.alt = `添付画像 ${index + 1}`;
+                const remove = document.createElement('button');
+                remove.type = 'button';
+                remove.className = 'remove-btn';
+                remove.textContent = '×';
+                remove.title = `画像${index + 1}を削除`;
+                remove.addEventListener('click', () => removeAttachment(index));
+                item.append(img, remove);
+                previewArea.appendChild(item);
+            });
+            previewArea.style.display = attachedImages.length ? 'block' : 'none';
+        }
 
-        function removeAttachment() {
-            attachedImageData = null;
-            previewArea.style.display = 'none';
-            previewImg.src = '';
+        function removeAttachment(index = null) {
+            if (index === null) attachedImages = [];
+            else attachedImages.splice(index, 1);
+            renderAttachmentPreviews();
             checkInputState();
         }
 
@@ -1140,12 +1269,140 @@
         function checkInputState() {
             const text = chatInput.value.trim();
             const hasApi = apiKeyInput.value.trim() !== '';
-            chatSendBtn.disabled = !(hasApi && (text || attachedImageData));
+            chatSendBtn.disabled = !(hasApi && (text || attachedImages.length > 0));
         }
         apiKeyInput.addEventListener('input', checkInputState);
 
         // --- チャットUI構築 ---
-        function appendMessageToUI(role, text, imageUrl, animateScroll = true) {
+        function extractMathTokens(text) {
+            const tokens = [];
+            const protectedText = String(text || '').replace(
+                /\$\$[\s\S]*?\$\$|\\\[[\s\S]*?\\\]|\\\([\s\S]*?\\\)|(?<!\$)\$(?!\$)[^\n$]+?(?<!\\)\$(?!\$)/g,
+                (match) => {
+                    const index = tokens.length;
+                    tokens.push(match);
+                    return `MATH_TOKEN_${index}_END`;
+                }
+            );
+            return { protectedText, tokens };
+        }
+
+        function repairCommonLeftRightDelimiter(latex) {
+            let repaired = latex;
+            const leftCount = (repaired.match(/\\left\b/g) || []).length;
+            const rightCount = (repaired.match(/\\right\b/g) || []).length;
+
+            // 対応数が合わない場合はサイズ指定だけを外す。
+            // 不足した \right を末尾へ追加すると、別の区切りエラーを誘発するため追加しない。
+            if (leftCount !== rightCount) {
+                repaired = repaired.replace(/\\left\b|\\right\b/g, '');
+            }
+
+            // \left / \right の直後に有効な区切り文字がない場合も指定を外す。
+            repaired = repaired
+                .replace(/\\left(?!\s*[()[\]{}|.])/g, '')
+                .replace(/\\right(?!\s*[()[\]{}|.])/g, '');
+
+            // AIが閉じ忘れ・閉じ過ぎを出した場合は、描画できる範囲を保つ。
+            const openBraces = (repaired.match(/(?<!\\)\{/g) || []).length;
+            const closeBraces = (repaired.match(/(?<!\\)\}/g) || []).length;
+            if (openBraces > closeBraces) {
+                const missing = '}'.repeat(openBraces - closeBraces);
+                const closingDelimiter = repaired.match(/(\\\]|\\\)|\$\$|\$)$/);
+                if (closingDelimiter) {
+                    const index = repaired.lastIndexOf(closingDelimiter[0]);
+                    repaired = repaired.slice(0, index) + missing + repaired.slice(index);
+                } else {
+                    repaired += missing;
+                }
+            } else if (closeBraces > openBraces) {
+                let extra = closeBraces - openBraces;
+                repaired = repaired.replace(/(?<!\\)\}/g, (match) => {
+                    if (extra <= 0) return match;
+                    extra -= 1;
+                    return '';
+                });
+            }
+            return repaired;
+        }
+
+        function restoreMathTokens(element, tokens) {
+            if (!tokens.length) return [];
+            const fragments = [];
+            const walker = document.createTreeWalker(element, NodeFilter.SHOW_TEXT);
+            const textNodes = [];
+            while (walker.nextNode()) textNodes.push(walker.currentNode);
+
+            for (const node of textNodes) {
+                let value = node.nodeValue;
+                if (!value || !value.includes('MATH_TOKEN_')) continue;
+                const parent = node.parentElement;
+                if (parent && /^(CODE|PRE)$/.test(parent.tagName)) continue;
+
+                const parts = value.split(/(MATH_TOKEN_\d+_END)/g);
+                if (parts.length === 1) continue;
+                const replacement = document.createDocumentFragment();
+                for (const part of parts) {
+                    const match = part.match(/^MATH_TOKEN_(\d+)_END$/);
+                    if (!match) {
+                        if (part) replacement.appendChild(document.createTextNode(part));
+                        continue;
+                    }
+                    const index = Number(match[1]);
+                    const source = tokens[index];
+                    const isDisplay = source.startsWith('$$') || source.startsWith('\\[');
+                    const fragment = document.createElement(isDisplay ? 'div' : 'span');
+                    fragment.className = 'math-fragment';
+                    fragment.dataset.mathIndex = String(index);
+                    fragment.textContent = repairCommonLeftRightDelimiter(source);
+                    replacement.appendChild(fragment);
+                    fragments.push(fragment);
+                }
+                node.parentNode.replaceChild(replacement, node);
+            }
+            return fragments;
+        }
+
+        async function typesetMathFragments(element, onComplete) {
+            const done = () => { if (typeof onComplete === 'function') onComplete(); };
+            if (!element || !window.MathJax || typeof MathJax.typesetPromise !== 'function') {
+                done();
+                return;
+            }
+            try {
+                if (MathJax.startup && MathJax.startup.promise) await MathJax.startup.promise;
+                const fragments = [...element.querySelectorAll('.math-fragment')];
+                for (const fragment of fragments) {
+                    try {
+                        await MathJax.typesetPromise([fragment]);
+                    } catch (error) {
+                        // 壊れた数式だけを元のLaTeX文字列のまま残し、他の数式は描画する。
+                        console.warn('数式の一部を描画できませんでした:', error && error.message ? error.message : error);
+                        const index = Number(fragment.dataset.mathIndex);
+                        fragment.replaceWith(document.createTextNode(index >= 0 ? fragment.textContent : ''));
+                    }
+                }
+            } catch (error) {
+                console.warn('数式描画の準備に失敗しました:', error && error.message ? error.message : error);
+            } finally {
+                done();
+            }
+        }
+
+        function renderMarkdownAndMath(text, containerElement, onComplete) {
+            if (typeof streamMathTimer !== 'undefined') clearTimeout(streamMathTimer);
+            if (typeof streamMathGeneration === 'number') streamMathGeneration++;
+            if (window.MathJax && typeof MathJax.typesetClear === 'function') {
+                try { MathJax.typesetClear([containerElement]); } catch (error) { /* 描画前なので無視 */ }
+            }
+            const extracted = extractMathTokens(text);
+            containerElement.innerHTML = marked.parse(extracted.protectedText);
+            restoreMathTokens(containerElement, extracted.tokens);
+            typesetMathFragments(containerElement, onComplete);
+        }
+
+
+        function appendMessageToUI(role, text, imageUrl, animateScroll = true, onComplete = null) {
             const msgDiv = document.createElement('div');
             msgDiv.className = `message ${role}`;
             
@@ -1156,25 +1413,24 @@
             const contentDiv = document.createElement('div');
             contentDiv.className = 'message-content';
             
-            if (imageUrl) {
+            const imageUrls = Array.isArray(imageUrl) ? imageUrl : (imageUrl ? [imageUrl] : []);
+            imageUrls.forEach((url, index) => {
                 const img = document.createElement('img');
-                img.src = imageUrl;
+                img.src = url;
                 img.className = 'attached-image';
+                img.alt = `添付画像 ${index + 1}`;
+                img.dataset.imageIndex = String(index + 1);
                 contentDiv.appendChild(img);
-            }
+            });
             
             const textDiv = document.createElement('div');
-            textDiv.innerHTML = marked.parse(text || "");
+            renderMarkdownAndMath(text || "", textDiv, onComplete);
             contentDiv.appendChild(textDiv);
             
             msgDiv.appendChild(avatar);
             msgDiv.appendChild(contentDiv);
             chatContainer.appendChild(msgDiv);
             
-            // 数式のレンダリングを実行
-            if (window.MathJax) {
-                MathJax.typesetPromise([msgDiv]).catch((err) => console.log(err));
-            }
             
             if (animateScroll) {
                 msgDiv.scrollIntoView({ behavior: 'smooth', block: 'end' });
@@ -1195,17 +1451,15 @@
         // ====================================================
         // 【改善A】送信前の画像圧縮（長辺1600pxへ縮小＋JPEG再エンコード）
         // 【改善C】画像を送るのは「今回のターン」だけ（過去画像の再送を停止）
-        // 【改善D】タイムアウト＋自動リトライの共通設定
         // ====================================================
-        const IMAGE_MAX_SIDE = 1600;                 // 縮小後の長辺(px)
-        const IMAGE_JPEG_QUALITY = 0.82;             // JPEG品質
-        const IMAGE_MAX_BYTES = 3.5 * 1024 * 1024;   // これを超えたら品質を段階的に下げる
-        const SEND_IMAGE_ONLY_IN_LATEST_TURN = true; // falseにすると従来どおり毎回すべての画像を送信します
-        const REQUEST_TIMEOUT_MS = 300000;           // 1回あたりの制限時間（300秒＝5分）
-        const RETRY_MAX = 2;                         // 失敗時に追加で再試行する回数
-        const RETRY_BASE_DELAY_MS = 1000;            // 再試行前の待ち時間（1秒→2秒と倍に増やす）
+        const MAX_IMAGE_COUNT = 3;
+        const IMAGE_MAX_SIDE = 1600;
+        const IMAGE_JPEG_QUALITY = 0.82;
+        const IMAGE_MAX_BYTES = 3.5 * 1024 * 1024; // 1枚あたりの圧縮後上限
+        const IMAGE_MAX_TOTAL_BYTES = 8 * 1024 * 1024; // 全画像の圧縮後合計上限
+        const SEND_IMAGE_ONLY_IN_LATEST_TURN = true;
 
-        // 【改善A】画像ファイルを<img>経由で読み込む（EXIFの回転を保ったまま描画するため）
+        // 画像ファイルを<img>経由で読み込む（EXIFの回転を保ったまま描画するため）
         function loadImageFromFile(file) {
             return new Promise((resolve, reject) => {
                 const url = URL.createObjectURL(file);
@@ -1231,7 +1485,7 @@
             });
         }
 
-        // 【改善A】画像を縮小・再エンコードしてからBase64化する（送信量とメモリを大幅に削減）
+        // 画像を縮小・再エンコードしてからBase64化する（送信量とメモリを大幅に削減）
         async function shrinkImage(file) {
             if (!file) return null;
             if (!/^image\//.test(file.type || "")) {
@@ -1265,7 +1519,6 @@
                 );
             });
 
-            // まだ大きい場合は品質を段階的に落とす
             for (const quality of [0.7, 0.6, 0.5]) {
                 if (blob.size <= IMAGE_MAX_BYTES) break;
                 blob = await new Promise((resolve) => canvas.toBlob(resolve, "image/jpeg", quality));
@@ -1284,7 +1537,7 @@
             };
         }
 
-        // 【改善C】過去ターンの画像(inlineData)を取り除き、直近のターンの画像だけを送る
+        // 過去ターンの画像(inlineData)を取り除き、直近のターンの画像だけを送る
         function sanitizeContentsForSend(contents) {
             const list = Array.isArray(contents) ? contents : [];
             if (!SEND_IMAGE_ONLY_IN_LATEST_TURN || list.length === 0) return list;
@@ -1304,79 +1557,49 @@
             });
         }
 
-        // 【改善D】再試行すべきエラーかどうかの判定
-        function isRetryableError(error) {
-            if (!error) return false;
-            if (error.retryableHttp === true) return true;
-            if (error.name === "AbortError" || error.name === "TimeoutError") return true;
-            const message = String(error.message || "");
-            return /load failed|failed to fetch|networkerror|network error|fetch failed|net::|ERR_/i.test(message);
-        }
-
-        function sleep(ms) {
-            return new Promise((resolve) => setTimeout(resolve, ms));
-        }
-
-        // --- Gemini API連携 ---
-        function buildApiPayload() {
-            const contents = currentMessages.map(msg => {
-                let parts = [];
-                if (msg.text) {
-                    parts.push({ text: msg.text });
-                }
-                if (msg.imageUrl) {
-                    const match = msg.imageUrl.match(/^data:(.*?);base64,(.*)$/);
-                    if (match) {
-                        parts.push({
-                            inlineData: {
-                                mimeType: match[1],
-                                data: match[2]
-                            }
-                        });
-                    }
-                }
-                return { role: msg.role, parts: parts };
-            });
-
-            return {
-                systemInstruction: { parts: [{ text: SYSTEM_INSTRUCTION }] },
-                // 【改善C】過去ターンの画像は取り除き、直近のターンの画像だけを送る
-                contents: sanitizeContentsForSend(contents),
-                generationConfig: { temperature: 0.7 }
-            };
-        }
-
+        // __ENGINE_START__
         // ====================================================
-        // 【改善E】Geminiのストリーミング(SSE)受信エンジン
-        // streamGenerateContent?alt=sse の ""data: {...}"" 行を逐次読み取り、
-        // 受け取った分だけ本文を組み立ててコールバックします。
+        // 【改善E】ストリーミング(SSE)受信
+        //  streamGenerateContent?alt=sse の "data: {...}" 行を逐次読み取り、
+        //  受け取った分だけ本文を組み立ててコールバックします。
+        //  ※ 自動リトライは行いません（1操作＝1リクエスト）
+        //  ※ 受信中の描画はMarkdownのみ。数式は受信完了時にまとめて描画します
+        //     （毎チャンクで数式を組むとスマホで極端に重くなるため）
         // ====================================================
+        const USE_STREAMING = true;          // false にすると従来の一括受信(generateContent)に戻ります
+        const REQUEST_TIMEOUT_MS = 300000;   // 受信の制限時間（300秒＝5分）
 
-        // 受信中の本文描画（Markdownのみ。数式は完了時にまとめて描画して負荷を抑える）
-        function streamRenderText(element, text) {
+        // 受信中の本文描画。Markdownを先に表示し、数式の区切りが閉じた時だけMathJaxを実行する。
+        function hasCompleteMathDelimiter(text) {
+            const inlineOpen = (text.match(/\\\(/g) || []).length;
+            const inlineClose = (text.match(/\\\)/g) || []).length;
+            const displayOpen = (text.match(/\\\[/g) || []).length;
+            const displayClose = (text.match(/\\\]/g) || []).length;
+            if (inlineOpen !== inlineClose || displayOpen !== displayClose) return false;
+            const doubleDollarCount = (text.match(/(?<!\\)\$\$/g) || []).length;
+            if (doubleDollarCount % 2 !== 0) return false;
+            const singleDollarText = text.replace(/(?<!\\)\$\$/g, '');
+            return ((singleDollarText.match(/(?<!\\)\$/g) || []).length % 2) === 0;
+        }
+
+        let streamMathTimer = null;
+        let streamMathGeneration = 0;
+
+        function renderStreamingMarkdownAndMath(element, text) {
             if (!element) return;
-            if (window.marked && typeof marked.parse === "function") {
-                element.innerHTML = marked.parse(text);
-            } else {
-                element.textContent = text;
-            }
-        }
-
-        // 完了時の数式描画（MathJaxが無い環境でもエラーにしない）
-        function streamFinalizeMath(element) {
-            if (!element || !window.MathJax || typeof MathJax.typesetPromise !== "function") {
-                return Promise.resolve();
-            }
-            return MathJax.typesetPromise([element]).catch((err) => {
-                console.warn("数式の描画に失敗しました:", err);
-            });
+            clearTimeout(streamMathTimer);
+            const generation = ++streamMathGeneration;
+            streamMathTimer = setTimeout(() => {
+                if (generation !== streamMathGeneration) return;
+                renderMarkdownAndMath(text, element);
+            }, 300);
         }
 
         // 1つのSSEイベント(JSON)から差分テキストを取り出す
         function extractDeltaText(json) {
             if (!json || typeof json !== "object") return "";
 
-            // Interactions API（新しい形式: step.delta + delta.text）
+            // Interactions API（新しい形式）
             if (json.event_type === "step.delta" && json.delta &&
                 json.delta.type === "text" && typeof json.delta.text === "string") {
                 return json.delta.text;
@@ -1402,15 +1625,14 @@
         function extractBlockedReason(json) {
             const candidates = json && json.candidates;
             if (Array.isArray(candidates) && candidates.length > 0) {
-                const candidate = candidates[0];
-                const reason = candidate && candidate.finishReason;
+                const reason = candidates[0] && candidates[0].finishReason;
                 if (reason && reason !== "STOP" && reason !== "MAX_TOKENS") return reason;
             }
             return null;
         }
 
-        // レスポンス本文を読み切って、差分ごとに onDelta を呼ぶ
-        async function readSseBody(response, onDelta, onAnyData) {
+        // レスポンス本文を読み切り、差分ごとに onDelta を呼ぶ
+        async function readSseBody(response, onDelta) {
             let sawSse = false;
             let doneReading = false;
             let buffer = "";
@@ -1418,16 +1640,12 @@
 
             const handleLine = (line) => {
                 const cleaned = line.replace(/\r$/, "").trim();
-                if (!cleaned) return;
-
-                // "event: ..." などの行は無視し、data: 行だけを対象にする
-                if (!cleaned.startsWith("data:")) return;
+                if (!cleaned || !cleaned.startsWith("data:")) return;
 
                 sawSse = true;
                 const payload = cleaned.slice(5).trim();
                 if (!payload) return;
 
-                // ストリーム終端マーカー
                 if (payload === "[DONE]") {
                     doneReading = true;
                     return;
@@ -1437,43 +1655,41 @@
                 try {
                     json = JSON.parse(payload);
                 } catch (e) {
-                    return; // 途中で切れた行は捨てる
+                    return;
                 }
 
                 if (json && json.error) {
                     throw new Error(json.error.message || "ストリーミング中にAPIエラーが発生しました。");
                 }
 
-                if (typeof onAnyData === "function") onAnyData();
-
                 const delta = extractDeltaText(json);
                 if (delta) onDelta(delta);
 
                 const blocked = extractBlockedReason(json);
                 if (blocked) {
-                    throw new Error(`回答が途中で終了しました（理由: ${blocked}）。問題文を変えるか、もう一度お試しください。`);
+                    throw new Error("回答が途中で終了しました（理由: " + blocked + "）。問題文を変えるか、もう一度お試しください。");
                 }
             };
 
-            // ReadableStream + TextDecoder（UTF-8のマルチバイトがチャンク境界で切れても壊れない）
+            // ReadableStream + TextDecoder
+            // （TextDecoderStreamはSafari 14.1未満で使えないため、こちらを使う）
             if (response.body && typeof response.body.getReader === "function" && typeof TextDecoder === "function") {
                 const reader = response.body.getReader();
                 const decoder = new TextDecoder("utf-8");
                 try {
                     while (!doneReading) {
-                        const { value, done } = await reader.read();
-                        if (done) break;
+                        const chunkInfo = await reader.read();
+                        if (chunkInfo.done) break;
 
-                        const chunk = decoder.decode(value, { stream: true });
+                        const chunk = decoder.decode(chunkInfo.value, { stream: true });
                         rawAll += chunk;
                         buffer += chunk;
 
                         const lines = buffer.split("\n");
-                        buffer = lines.pop(); // 未完了の行は次のチャンクへ持ち越す
+                        buffer = lines.pop();   // 未完了の行は次のチャンクへ持ち越す
                         for (const line of lines) handleLine(line);
                     }
 
-                    // 端数（最後の改行なしの行）とデコーダの残りを処理する
                     if (!doneReading) {
                         const tail = decoder.decode();
                         if (tail) { rawAll += tail; buffer += tail; }
@@ -1483,27 +1699,19 @@
                     try { reader.releaseLock(); } catch (e) {}
                 }
             } else {
-                // ReadableStream非対応のブラウザ：まとめて受信してから解析する
                 rawAll = await response.text();
                 for (const line of rawAll.split("\n")) handleLine(line);
             }
 
-            // data: 行が1つも無かった場合は、通常のJSON（またはJSON配列）として再解釈する
+            // "data:" 行が1つも無かった場合は通常のJSON（またはJSON配列）として再解釈する
             if (!sawSse && rawAll.trim()) {
                 let json = null;
-                try {
-                    json = JSON.parse(rawAll);
-                } catch (e) {
-                    json = null;
-                }
+                try { json = JSON.parse(rawAll); } catch (e) { json = null; }
                 if (json) {
                     const items = Array.isArray(json) ? json : [json];
                     for (const item of items) {
                         const delta = extractDeltaText(item);
-                        if (delta) {
-                            if (typeof onAnyData === "function") onAnyData();
-                            onDelta(delta);
-                        }
+                        if (delta) onDelta(delta);
                     }
                 }
             }
@@ -1511,104 +1719,371 @@
             return rawAll;
         }
 
-        // タイムアウト＋自動リトライ付きでストリーミング受信する
-        async function streamGeminiRequest(url, body, onDelta, onRetry) {
-            let lastError = null;
-            let receivedText = "";
+        // APIエラーを分かりやすい日本語に変換する
+        function buildApiErrorMessage(status, errorMsg) {
+            if (status === 429) {
+                return "APIの利用制限に達しました。左側のメニューから「Geminiのモデル名」を下のものに変更するか、少し時間を置いてから再度お試しください。";
+            }
+            if (status === 503) {
+                return "現在このモデルはGoogle側で混み合っています（あなたの通信環境やこのアプリの不具合ではありません）。少し時間を置くか、左側のメニューで別のモデルに切り替えてお試しください。";
+            }
+            if (status === 500) {
+                return "Google側で一時的なエラーが発生しています。少し時間を置いてから再度お試しください。";
+            }
+            if (status === 400 && /API key not valid/i.test(errorMsg || "")) {
+                return "無効なAPIキーです。取得したキーが正しく貼り付けられているか確認してください。";
+            }
+            if (status === 404) {
+                return "選択中のモデルが見つかりません。左側のメニューから別のモデルを選んでください。（" + errorMsg + "）";
+            }
+            if (status === 413) {
+                return "送信データが大きすぎます。画像を小さくするか、枚数を減らしてください。";
+            }
+            return errorMsg;
+        }
 
-            for (let attempt = 0; attempt <= RETRY_MAX; attempt++) {
-                if (attempt > 0 && typeof onRetry === "function") onRetry(attempt);
+        async function readErrorMessage(response) {
+            try {
+                const raw = await response.text();
+                const parsed = raw ? JSON.parse(raw) : null;
+                return (parsed && parsed.error && parsed.error.message) || response.statusText;
+            } catch (e) {
+                return response.statusText;
+            }
+        }
 
-                const controller = new AbortController();
-                const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
-                let receivedAnyData = false;
+        // Gemini APIへ1回だけリクエストする（ストリーミング／一括を切り替え可能）
+        async function requestGemini(urlStream, urlPlain, body, onDelta) {
+            const controller = new AbortController();
+            activeRequest = controller;
+            const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
 
-                try {
-                    const response = await fetch(url, {
+            try {
+                if (USE_STREAMING) {
+                    const response = await fetch(urlStream, {
                         method: "POST",
-                        headers: {
-                            "Content-Type": "application/json",
-                            "Accept": "text/event-stream"
-                        },
+                        headers: { "Content-Type": "application/json" },
                         body: body,
                         signal: controller.signal
                     });
 
                     if (!response.ok) {
-                        const rawErrorText = await response.text().catch(() => "");
-                        let errorMsg = response.statusText;
-                        try {
-                            const parsed = rawErrorText ? JSON.parse(rawErrorText) : null;
-                            errorMsg = (parsed && parsed.error && parsed.error.message) || errorMsg;
-                        } catch (e) {}
-
-                        if (response.status === 429) {
-                            errorMsg = "APIの利用制限に達しました。左側のメニューから「Geminiのモデル名」を下のものに変更するか、少し時間を置いてから再度お試しください。";
-                        } else if (response.status === 400 && /API key not valid/i.test(errorMsg)) {
-                            errorMsg = "無効なAPIキーです。取得したキーが正しく貼り付けられているか確認してください。";
-                        } else if (response.status === 413) {
-                            errorMsg = "送信データが大きすぎます。画像を小さくするか、枚数を減らしてください。";
-                        } else if (response.status === 404) {
-                            errorMsg = "選択中のモデルが見つかりません。左側のメニューから別のモデルを選んでください。(" + errorMsg + ")";
-                        }
-
-                        const httpError = new Error(errorMsg);
-                        // 一時的なエラー(429/408/5xx)のみ再試行する
-                        httpError.retryableHttp = (response.status === 429 || response.status === 408 || response.status >= 500);
-                        throw httpError;
+                        throw new Error(buildApiErrorMessage(response.status, await readErrorMessage(response)));
                     }
 
-                    await readSseBody(
-                        response,
-                        (delta) => {
-                            receivedText += delta;
-                            onDelta(receivedText);
-                        },
-                        () => { receivedAnyData = true; }
-                    );
+                    let received = "";
+                    await readSseBody(response, (delta) => {
+                        received += delta;
+                        onDelta(received);
+                    });
 
-                    if (!receivedText.trim()) {
+                    if (!received.trim()) {
                         throw new Error("予期せぬレスポンス形式です。もう1度「この問題を解説させる」ボタンを押してみてください。");
                     }
-                    return receivedText;
-
-                } catch (error) {
-                    lastError = error;
-
-                    // すでに本文を受信し始めていた場合は、重複を避けるため再試行しない
-                    if (receivedAnyData) {
-                        if (error.name === "AbortError") {
-                            throw new Error("受信中に" + Math.round(REQUEST_TIMEOUT_MS / 1000) + "秒を超えたため、処理をタイムアウト中断しました。");
-                        }
-                        throw error;
-                    }
-
-                    if (attempt < RETRY_MAX && isRetryableError(error)) {
-                        console.warn(`通信に失敗したため再試行します (${attempt + 1}/${RETRY_MAX}): ${error.message}`);
-                        await sleep(RETRY_BASE_DELAY_MS * Math.pow(2, attempt));
-                        continue;
-                    }
-
-                    if (error.name === "AbortError") {
-                        throw new Error(Math.round(REQUEST_TIMEOUT_MS / 1000) + "秒の制限時間を超えたため、処理をタイムアウト中断しました。");
-                    }
-                    throw error;
-
-                } finally {
-                    clearTimeout(timeoutId);
+                    return received;
                 }
-            }
 
-            throw lastError || new Error("通信に失敗しました。時間をおいて再度お試しください。");
+                // 従来の一括受信
+                const response = await fetch(urlPlain, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: body,
+                    signal: controller.signal
+                });
+
+                let rawText = "";
+                try { rawText = await response.text(); } catch (e) {}
+                let data = {};
+                try { data = rawText ? JSON.parse(rawText) : {}; } catch (e) {}
+
+                if (!response.ok) {
+                    throw new Error(buildApiErrorMessage(response.status, (data.error && data.error.message) || response.statusText));
+                }
+
+                const text = extractDeltaText(data);
+                if (!text) {
+                    throw new Error("予期せぬレスポンス形式です。もう1度「この問題を解説させる」ボタンを押してみてください。");
+                }
+                onDelta(text);
+                return text;
+
+            } catch (error) {
+                if (error.name === "AbortError") {
+                    throw new Error(Math.round(REQUEST_TIMEOUT_MS / 1000) + "秒の制限時間を超えたため、処理をタイムアウト中断しました。");
+                }
+                throw error;
+            } finally {
+                clearTimeout(timeoutId);
+                if (activeRequest === controller) activeRequest = null;
+            }
         }
 
-        // 【改善E】ストリーミング(SSE)で受け取り、受け取った分だけ画面に反映する
-        async function callGeminiStream(onDelta, onRetry) {
-            const apiKey = apiKeyInput.value.trim();
-            const model = modelSelect.value;
-            const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:streamGenerateContent?alt=sse&key=${apiKey}`;
-            const payload = buildApiPayload();
-            return await streamGeminiRequest(url, JSON.stringify(payload), onDelta, onRetry);
+        function isTemporaryFetchError(error) {
+            const message = String(error && error.message || error);
+            return error instanceof TypeError ||
+                /failed to fetch/i.test(message) ||
+                /load failed/i.test(message) ||
+                /network(error)?/i.test(message);
+        }
+
+        async function callGeminiAPIStreamWithRetry(onChunk, onRetry) {
+            let lastError;
+            for (let attempt = 0; attempt < 2; attempt++) {
+                try {
+                    return await callGeminiAPIStream(onChunk);
+                } catch (error) {
+                    lastError = error;
+                    if (attempt === 1 || !isTemporaryFetchError(error)) throw error;
+                    if (typeof onRetry === 'function') onRetry();
+                    await new Promise((resolve) => setTimeout(resolve, 1200));
+                }
+            }
+            throw lastError;
+        }
+
+        // 既存のローディング表示(el)を、受信した本文を順次描画する表示に切り替える
+        function startStreamingDisplay(el) {
+            let textDiv = null;
+            return {
+                el: el,
+                setText: (text) => {
+                    if (!textDiv || !textDiv.parentNode) {
+                        const content = el.querySelector(".message-content") || el;
+                        content.innerHTML = "";
+                        textDiv = document.createElement("div");
+                        content.appendChild(textDiv);
+                    }
+                    renderStreamingMarkdownAndMath(textDiv, text);
+                    if (isChatNearBottom()) chatContainer.scrollTop = chatContainer.scrollHeight;
+                }
+            };
+        }
+        // MathJaxの読み込みを待ってから数式を描画する
+        // （読み込み前に呼ぶと、何も描画されないまま終わってしまうため）
+        function typesetMath(element, onComplete) {
+            const done = () => { if (typeof onComplete === "function") onComplete(); };
+            if (!element) { done(); return; }
+
+            const run = () => {
+                if (!window.MathJax || typeof MathJax.typesetPromise !== "function") { done(); return; }
+                MathJax.typesetPromise([element]).then(done).catch((err) => {
+                    console.warn("数式の描画に失敗しました:", err && err.message ? err.message : err);
+                    done();
+                });
+            };
+
+            if (window.MathJax && MathJax.startup && MathJax.startup.promise) {
+                MathJax.startup.promise.then(run).catch(run);
+            } else {
+                run();
+            }
+        }
+
+        function isChatNearBottom(threshold = 80) {
+            return chatContainer.scrollHeight - chatContainer.scrollTop - chatContainer.clientHeight <= threshold;
+        }
+
+        function updateProgress(messageElement, message) {
+            const progress = messageElement && messageElement.querySelector('.progress-text');
+            if (progress) progress.textContent = message;
+        }
+
+        function setDownloadReady(answer, imageUrl, questionText, renderedElement) {
+            lastCompletedAnswer = answer || '';
+            lastProblemImageUrl = Array.isArray(imageUrl) ? imageUrl.slice() : (imageUrl ? [imageUrl] : []);
+            lastProblemQuestion = questionText || '';
+            lastRenderedAnswerElement = renderedElement || null;
+            downloadAnswerBtn.disabled = !lastCompletedAnswer.trim();
+        }
+
+        function closeDownloadMenu() {
+            downloadMenu.classList.remove('open');
+        }
+
+        async function buildExportCanvas() {
+            if (!lastCompletedAnswer.trim()) {
+                throw new Error('完全に出力された回答がありません。');
+            }
+            if (!lastRenderedAnswerElement ||
+                !lastRenderedAnswerElement.isConnected ||
+                !document.body.contains(lastRenderedAnswerElement)) {
+                throw new Error('回答の数式描画が完了していないため、書き出せません。');
+            }
+
+            // 以後の非同期処理中に最新回答が差し替わっても、今回の対象を固定する。
+            const renderedAnswerElement = lastRenderedAnswerElement;
+            const imageUrls = Array.isArray(lastProblemImageUrl) ? lastProblemImageUrl.slice() : (lastProblemImageUrl ? [lastProblemImageUrl] : []);
+            const questionText = lastProblemQuestion;
+            const answer = renderedAnswerElement.cloneNode(true);
+            if (!answer || !answer.textContent.trim()) {
+                throw new Error('書き出し対象の回答DOMが空です。');
+            }
+
+            // MathJaxの支援用MathMLは画面では不可視だが、html2canvasの環境によって
+            // 可視要素として拾われ、数式が二重に見えることがある。書き出しクローンからのみ除去する。
+            answer.querySelectorAll('mjx-assistive-mml, .MathJax_Preview').forEach((node) => node.remove());
+
+            const sheet = document.createElement('div');
+            sheet.className = 'export-sheet';
+            sheet.innerHTML = '<h1>数学問題の解説</h1>';
+            imageUrls.forEach((imageUrl, index) => {
+                const image = document.createElement('img');
+                image.className = 'export-image';
+                image.alt = `添付画像 ${index + 1}`;
+                image.src = imageUrl;
+                sheet.appendChild(image);
+            });
+            if (questionText.trim()) {
+                const question = document.createElement('div');
+                question.className = 'export-question';
+                question.textContent = questionText;
+                sheet.appendChild(question);
+            }
+            answer.classList.add('export-answer');
+            sheet.appendChild(answer);
+            document.body.appendChild(sheet);
+            try {
+                const image = sheet.querySelector('.export-image');
+                if (image && !image.complete) {
+                    await new Promise((resolve, reject) => {
+                        image.addEventListener('load', resolve, { once: true });
+                        image.addEventListener('error', () => reject(new Error('添付画像の読み込みに失敗しました。')), { once: true });
+                    });
+                }
+                // 画面上ですでにMathJax描画済みのDOMをクローンするため、ここでは再typesetしない。
+                await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+                sheet.querySelectorAll('mjx-assistive-mml, .MathJax_Preview').forEach((node) => node.remove());
+                return await html2canvas(sheet, {
+                    backgroundColor: '#ffffff',
+                    scale: Math.min(2, window.devicePixelRatio || 1),
+                    useCORS: true,
+                    logging: false
+                });
+            } finally {
+                sheet.remove();
+            }
+        }
+
+        async function shareOrDownloadBlob(blob, filename, mimeType) {
+            const file = new File([blob], filename, { type: mimeType });
+            if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
+                try {
+                    await navigator.share({ files: [file], title: filename });
+                    return;
+                } catch (error) {
+                    if (error && error.name === 'AbortError') return;
+                }
+            }
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = filename;
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+            setTimeout(() => URL.revokeObjectURL(url), 1000);
+        }
+
+        async function downloadAnswerAsImage() {
+            const canvas = await buildExportCanvas();
+            const blob = await new Promise((resolve) => canvas.toBlob(resolve, 'image/png'));
+            if (!blob) throw new Error('画像の作成に失敗しました。');
+            await shareOrDownloadBlob(blob, 'gemmath-answer.png', 'image/png');
+        }
+
+        async function downloadAnswerAsPdf() {
+            const canvas = await buildExportCanvas();
+            const jsPDF = window.jspdf && window.jspdf.jsPDF;
+            if (!jsPDF) throw new Error('PDF作成ライブラリを読み込めませんでした。');
+            const pdf = new jsPDF({ orientation: 'p', unit: 'mm', format: 'a4' });
+            const margin = 10;
+            const pageWidth = 210;
+            const pageHeight = 297;
+            const imageWidth = pageWidth - margin * 2;
+            const imageHeight = canvas.height * imageWidth / canvas.width;
+            let heightLeft = imageHeight;
+            let position = margin;
+            const imageData = canvas.toDataURL('image/png');
+            pdf.addImage(imageData, 'PNG', margin, position, imageWidth, imageHeight, undefined, 'FAST');
+            heightLeft -= pageHeight - margin * 2;
+            while (heightLeft > 0) {
+                position = margin - (imageHeight - heightLeft);
+                pdf.addPage();
+                pdf.addImage(imageData, 'PNG', margin, position, imageWidth, imageHeight, undefined, 'FAST');
+                heightLeft -= pageHeight - margin * 2;
+            }
+            const blob = pdf.output('blob');
+            await shareOrDownloadBlob(blob, 'gemmath-answer.pdf', 'application/pdf');
+        }
+
+        function setExportBusy(busy) {
+            exportInProgress = busy;
+            downloadAnswerBtn.disabled = busy || !lastCompletedAnswer.trim();
+            downloadPdfBtn.disabled = busy;
+            downloadImageBtn.disabled = busy;
+            if (newProblemSubmitBtn) newProblemSubmitBtn.disabled = busy;
+            chatSendBtn.disabled = busy;
+            if (busy) closeDownloadMenu();
+        }
+
+        async function runExport(exportFunction) {
+            if (exportInProgress) return;
+            if (!lastRenderedAnswerElement || !lastRenderedAnswerElement.isConnected) {
+                showError('回答の数式描画が完了していないため、書き出せません。');
+                return;
+            }
+            setExportBusy(true);
+            try {
+                await exportFunction();
+            } catch (error) {
+                showError(error.message || '書き出しに失敗しました。');
+            } finally {
+                setExportBusy(false);
+            }
+        }
+
+        downloadAnswerBtn.addEventListener('click', () => {
+            if (!downloadAnswerBtn.disabled) downloadMenu.classList.toggle('open');
+        });
+        downloadPdfBtn.addEventListener('click', async () => {
+            closeDownloadMenu();
+            await runExport(downloadAnswerAsPdf);
+        });
+        downloadImageBtn.addEventListener('click', async () => {
+            closeDownloadMenu();
+            await runExport(downloadAnswerAsImage);
+        });
+        document.addEventListener('click', (event) => {
+            if (!document.getElementById('download-area').contains(event.target)) closeDownloadMenu();
+        });
+
+
+
+        // --- Gemini API連携 ---
+        function buildApiPayload() {
+            const contents = currentMessages.map(msg => {
+                let parts = [];
+                if (msg.text) {
+                    parts.push({ text: msg.text });
+                }
+                const messageImages = Array.isArray(msg.images) ? msg.images : (msg.imageUrl ? [msg.imageUrl] : []);
+                messageImages.forEach((image) => {
+                    if (typeof image === 'object' && image.base64) {
+                        parts.push({ inlineData: { mimeType: image.mimeType || 'image/jpeg', data: image.base64 } });
+                    } else if (typeof image === 'string') {
+                        const match = image.match(/^data:(.*?);base64,(.*)$/);
+                        if (match) parts.push({ inlineData: { mimeType: match[1], data: match[2] } });
+                    }
+                });
+                return { role: msg.role, parts: parts };
+            });
+
+            return {
+                systemInstruction: { parts: [{ text: SYSTEM_INSTRUCTION }] },
+                // 【改善C】過去ターンの画像は取り除き、直近のターンの画像だけを送る
+                contents: sanitizeContentsForSend(contents),
+                generationConfig: { temperature: 0.7 }
+            };
         }
 
         chatInputForm.addEventListener('submit', async (e) => {
@@ -1619,18 +2094,19 @@
             saveApiKeyToLocal(apiKey);
 
             const promptText = chatInput.value.trim();
-            if (!promptText && !attachedImageData) return;
+            if (!promptText && attachedImages.length === 0) return;
 
             initialInfo.style.display = 'none';
 
             const userMsg = {
                 role: 'user',
                 text: promptText,
-                imageUrl: attachedImageData ? attachedImageData.dataUrl : null
+                images: attachedImages.map(image => ({ base64: image.base64, mimeType: image.mimeType, dataUrl: image.dataUrl, bytes: image.bytes })),
+                imageUrl: null // 旧履歴との互換用
             };
             currentMessages.push(userMsg);
             
-            appendMessageToUI('user', promptText, userMsg.imageUrl, true);
+            appendMessageToUI('user', promptText, userMsg.images.map(image => image.dataUrl), true);
             
             chatInput.value = '';
             chatInput.style.height = 'auto';
@@ -1644,75 +2120,32 @@
             chatContainer.appendChild(loadingMsg);
             chatContainer.scrollTop = chatContainer.scrollHeight;
 
+            // 【改善E】このローディング表示に、受信した本文を順次描画する
+            const streamDisplay = startStreamingDisplay(loadingMsg);
+
             try {
                 const model = modelSelect.value;
                 const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
                 
                 const payload = buildApiPayload();
-                const body = JSON.stringify(payload);
 
-                // 【改善E】受信しながら本文を描画するライブ表示
-                const liveMsgDiv = document.createElement('div');
-                liveMsgDiv.className = 'message assistant';
-                liveMsgDiv.innerHTML = `<div class="avatar">✨</div><div class="message-content"><div class="spinner"></div> 生成中...</div>`;
-                chatContainer.appendChild(liveMsgDiv);
-                chatContainer.scrollTop = chatContainer.scrollHeight;
+                // 【改善E】受信した本文をローディング表示に順次描画する
+                const responseText = await callGeminiAPIStreamWithRetry((currentText) => {
+                    streamDisplay.setText(currentText);
+                });
 
-                const updateRetryNotice = (attempt) => {
-                    const notice = `<div class="avatar">✨</div><div class="message-content"><div class="spinner"></div> 通信が不安定なため、自動で再試行しています（${attempt + 1}回目）...</div>`;
-                    loadingMsg.innerHTML = notice;
-                    liveMsgDiv.innerHTML = notice;
-                };
-
-                // ストリーミングで受信。うまくいかない場合は自動で通常リクエストに切り替える
-                let responseText = '';
-                let receivedPartial = false;
-                try {
-                    responseText = await callGeminiStream((currentText) => {
-                        receivedPartial = true;
-                        if (loadingMsg.style.display !== 'none') loadingMsg.style.display = 'none';
-                        streamRenderText(liveMsgDiv.querySelector('.message-content'), currentText);
-                        chatContainer.scrollTop = chatContainer.scrollHeight;
-                    }, updateRetryNotice);
-                } catch (streamError) {
-                    liveMsgDiv.remove();
-                    loadingMsg.style.display = '';
-
-                    // 途中まで表示していた場合は重複を避けるため、そのままエラーとして扱う
-                    if (receivedPartial) throw streamError;
-
-                    console.warn('ストリーミング受信に失敗したため、通常のリクエストに切り替えます:', streamError);
-                    const result = await fetchWithTimeoutAndRetry(url, body, updateRetryNotice);
-                    const fallbackResponse = result.response;
-                    const fallbackData = result.data;
-
-                    if (!fallbackResponse.ok) {
-                        let errorMsg = (fallbackData.error && fallbackData.error.message) || fallbackResponse.statusText;
-                        if (fallbackResponse.status === 429) errorMsg = "APIの利用制限に達しました。時間をおいてお試しください。";
-                        else if (fallbackResponse.status === 400 && errorMsg.includes("API key not valid")) errorMsg = "無効なAPIキーです。";
-                        else if (fallbackResponse.status === 413) errorMsg = "送信データが大きすぎます。画像を小さくするか、枚数を減らしてください。";
-                        throw new Error(errorMsg);
-                    }
-
-                    const fallbackCandidates = fallbackData.candidates;
-                    if (fallbackCandidates && fallbackCandidates[0] && fallbackCandidates[0].content && fallbackCandidates[0].content.parts) {
-                        responseText = fallbackCandidates[0].content.parts[0].text;
-                    } else {
-                        throw new Error("予期せぬレスポンス形式です。");
-                    }
-                }
-
-                if (liveMsgDiv.parentNode) liveMsgDiv.remove();
                 if (loadingMsg.parentNode) chatContainer.removeChild(loadingMsg);
 
                 currentMessages.push({ role: 'model', text: responseText, imageUrl: null });
-                appendMessageToUI('assistant', responseText, null, true);
+                let rendered = null;
+                rendered = appendMessageToUI('assistant', responseText, null, true, () => setDownloadReady(responseText, userMsg.images.map(image => image.dataUrl), promptText, rendered && rendered.querySelector('.message-content > div')));
 
                 saveCurrentSession();
 
             } catch (error) {
-                if (liveMsgDiv.parentNode) liveMsgDiv.remove();
-                if (loadingMsg.parentNode) chatContainer.removeChild(loadingMsg);
+                if (chatContainer.lastChild === loadingMsg) {
+                    chatContainer.removeChild(loadingMsg);
+                }
                 showError(error.message);
                 currentMessages.pop(); 
             } finally {
